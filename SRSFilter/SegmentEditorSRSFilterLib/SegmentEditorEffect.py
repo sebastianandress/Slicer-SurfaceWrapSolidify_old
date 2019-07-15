@@ -15,10 +15,6 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
     self.segment2DOutlineOpacity = None
     self.previewedSegmentID = None
 
-    # Effect-specific members
-    import vtkITK
-    self.autoThresholdCalculator = vtkITK.vtkITKImageThresholdCalculator()
-
     self.timer = qt.QTimer()
     self.previewState = 0
     self.previewStep = 1
@@ -46,14 +42,7 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
     return """bla"""
 
   def activate(self):
-    self.setCurrentSegmentTransparent()
-
-    # Update intensity range
-    self.masterVolumeNodeChanged()
-
-    # Setup and start preview pulse
-    self.setupPreviewDisplay()
-    self.timer.start(200)
+    pass
 
   def deactivate(self):
     self.restorePreviewedSegmentTransparency()
@@ -120,76 +109,19 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
     self.thresholdSlider.singleStep = 0.01
     self.scriptedEffect.addOptionsWidget(self.thresholdSlider)
 
-    self.autoThresholdModeSelectorComboBox = qt.QComboBox()
-    self.autoThresholdModeSelectorComboBox.addItem("auto->maximum", MODE_SET_LOWER_MAX)
-    self.autoThresholdModeSelectorComboBox.addItem("minimum->auto", MODE_SET_MIN_UPPER)
-    self.autoThresholdModeSelectorComboBox.addItem("as lower", MODE_SET_LOWER)
-    self.autoThresholdModeSelectorComboBox.addItem("as upper", MODE_SET_UPPER)
-    self.autoThresholdModeSelectorComboBox.setToolTip("How to set lower and upper threshold values. Current refers to keeping the current value.")
-
-    self.autoThresholdMethodSelectorComboBox = qt.QComboBox()
-    self.autoThresholdMethodSelectorComboBox.addItem("Otsu", METHOD_OTSU)
-    self.autoThresholdMethodSelectorComboBox.addItem("Huang", METHOD_HUANG)
-    self.autoThresholdMethodSelectorComboBox.addItem("IsoData", METHOD_ISO_DATA)
-    # Kittler-Illingworth sometimes fails with an exception, but it does not cause any major issue,
-    # it just logs an error message and does not compute a new threshold value
-    self.autoThresholdMethodSelectorComboBox.addItem("Kittler-Illingworth", METHOD_KITTLER_ILLINGWORTH)
-    # Li sometimes crashes (index out of range error in
-    # ITK/Modules/Filtering/Thresholding/include/itkLiThresholdCalculator.hxx#L94)
-    # We can add this method back when issue is fixed in ITK.
-    #self.autoThresholdMethodSelectorComboBox.addItem("Li", METHOD_LI)
-    self.autoThresholdMethodSelectorComboBox.addItem("Maximum entropy", METHOD_MAXIMUM_ENTROPY)
-    self.autoThresholdMethodSelectorComboBox.addItem("Moments", METHOD_MOMENTS)
-    self.autoThresholdMethodSelectorComboBox.addItem("Renyi entropy", METHOD_RENYI_ENTROPY)
-    self.autoThresholdMethodSelectorComboBox.addItem("Shanbhag", METHOD_SHANBHAG)
-    self.autoThresholdMethodSelectorComboBox.addItem("Triangle", METHOD_TRIANGLE)
-    self.autoThresholdMethodSelectorComboBox.addItem("Yen", METHOD_YEN)
-    self.autoThresholdMethodSelectorComboBox.setToolTip("Select method to compute threshold value automatically.")
-
-    self.selectPreviousAutoThresholdButton = qt.QToolButton()
-    self.selectPreviousAutoThresholdButton.text = "<"
-    self.selectPreviousAutoThresholdButton.setToolTip("Select previous thresholding method and set thresholds."
-      +" Useful for iterating through all available methods.")
-
-    self.selectNextAutoThresholdButton = qt.QToolButton()
-    self.selectNextAutoThresholdButton.text = ">"
-    self.selectNextAutoThresholdButton.setToolTip("Select next thresholding method and set thresholds."
-      +" Useful for iterating through all available methods.")
-
-    self.setAutoThresholdButton = qt.QPushButton("Set")
-    self.setAutoThresholdButton.setToolTip("Set threshold using selected method.")
-
-    # qt.QSizePolicy(qt.QSizePolicy.Expanding, qt.QSizePolicy.Expanding)
-    # fails on some systems, therefore set the policies using separate method calls
-    qSize = qt.QSizePolicy()
-    qSize.setHorizontalPolicy(qt.QSizePolicy.Expanding)
-    self.setAutoThresholdButton.setSizePolicy(qSize)
-
-    autoThresholdFrame = qt.QHBoxLayout()
-    autoThresholdFrame.addWidget(self.autoThresholdModeSelectorComboBox)
-    autoThresholdFrame.addWidget(self.autoThresholdMethodSelectorComboBox)
-    autoThresholdFrame.addWidget(self.selectPreviousAutoThresholdButton)
-    autoThresholdFrame.addWidget(self.selectNextAutoThresholdButton)
-    autoThresholdFrame.addWidget(self.setAutoThresholdButton)
-    self.scriptedEffect.addLabeledOptionsWidget("Automatic threshold:", autoThresholdFrame)
-
-    self.useForPaintButton = qt.QPushButton("Use for masking")
-    self.useForPaintButton.setToolTip("Use specified intensity range for masking and switch to Paint effect.")
-    self.scriptedEffect.addOptionsWidget(self.useForPaintButton)
+    self.updatePreviewButton = qt.QPushButton("Update Preview")
+    self.updatePreviewButton.objectName = self.__class__.__name__ + 'Update Preview'
+    self.updatePreviewButton.setToolTip("Fill selected segment in regions that are in the specified intensity range.")
+    self.scriptedEffect.addOptionsWidget(self.updatePreviewButton)
 
     self.applyButton = qt.QPushButton("Apply")
     self.applyButton.objectName = self.__class__.__name__ + 'Apply'
     self.applyButton.setToolTip("Fill selected segment in regions that are in the specified intensity range.")
     self.scriptedEffect.addOptionsWidget(self.applyButton)
 
-    self.useForPaintButton.connect('clicked()', self.onUseForPaint)
     self.thresholdSlider.connect('valuesChanged(double,double)', self.onThresholdValuesChanged)
-    self.autoThresholdMethodSelectorComboBox.connect("activated(int)", self.onSelectedAutoThresholdMethod)
-    self.autoThresholdModeSelectorComboBox.connect("activated(int)", self.onSelectedAutoThresholdMethod)
-    self.selectPreviousAutoThresholdButton.connect('clicked()', self.onSelectPreviousAutoThresholdMethod)
-    self.selectNextAutoThresholdButton.connect('clicked()', self.onSelectNextAutoThresholdMethod)
-    self.setAutoThresholdButton.connect('clicked()', self.onAutoThreshold)
     self.applyButton.connect('clicked()', self.onApply)
+    self.updatePreviewButton.connect('clicked()', self.onUpdatePreview)
 
   def createCursor(self, widget):
     # Turn off effect-specific cursor for this effect
@@ -220,8 +152,6 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
   def setMRMLDefaults(self):
     self.scriptedEffect.setParameterDefault("MinimumThreshold", 0.)
     self.scriptedEffect.setParameterDefault("MaximumThreshold", 0)
-    self.scriptedEffect.setParameterDefault("AutoThresholdMethod", METHOD_OTSU)
-    self.scriptedEffect.setParameterDefault("AutoThresholdMode", MODE_SET_LOWER_MAX)
 
   def updateGUIFromMRML(self):
     self.thresholdSlider.blockSignals(True)
@@ -229,27 +159,10 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
     self.thresholdSlider.setMaximumValue(self.scriptedEffect.doubleParameter("MaximumThreshold"))
     self.thresholdSlider.blockSignals(False)
 
-    autoThresholdMethod = self.autoThresholdMethodSelectorComboBox.findData(self.scriptedEffect.parameter("AutoThresholdMethod"))
-    wasBlocked = self.autoThresholdMethodSelectorComboBox.blockSignals(True)
-    self.autoThresholdMethodSelectorComboBox.setCurrentIndex(autoThresholdMethod)
-    self.autoThresholdMethodSelectorComboBox.blockSignals(wasBlocked)
-
-    autoThresholdMode = self.autoThresholdModeSelectorComboBox.findData(self.scriptedEffect.parameter("AutoThresholdMode"))
-    wasBlocked = self.autoThresholdModeSelectorComboBox.blockSignals(True)
-    self.autoThresholdModeSelectorComboBox.setCurrentIndex(autoThresholdMode)
-    self.autoThresholdModeSelectorComboBox.blockSignals(wasBlocked)
 
   def updateMRMLFromGUI(self):
     self.scriptedEffect.setParameter("MinimumThreshold", self.thresholdSlider.minimumValue)
     self.scriptedEffect.setParameter("MaximumThreshold", self.thresholdSlider.maximumValue)
-
-    methodIndex = self.autoThresholdMethodSelectorComboBox.currentIndex
-    autoThresholdMethod = self.autoThresholdMethodSelectorComboBox.itemData(methodIndex)
-    self.scriptedEffect.setParameter("AutoThresholdMethod", autoThresholdMethod)
-
-    modeIndex = self.autoThresholdModeSelectorComboBox.currentIndex
-    autoThresholdMode = self.autoThresholdModeSelectorComboBox.itemData(modeIndex)
-    self.scriptedEffect.setParameter("AutoThresholdMode", autoThresholdMode)
 
 
   #
@@ -258,81 +171,15 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
   def onThresholdValuesChanged(self,min,max):
     self.scriptedEffect.updateMRMLFromGUI()
 
-  def onUseForPaint(self):
-    parameterSetNode = self.scriptedEffect.parameterSetNode()
-    parameterSetNode.MasterVolumeIntensityMaskOn()
-    parameterSetNode.SetMasterVolumeIntensityMaskRange(self.thresholdSlider.minimumValue, self.thresholdSlider.maximumValue)
-    # Switch to paint effect
-    self.scriptedEffect.selectEffect("Paint")
+  def onUpdatePreview(self):
+    self.setCurrentSegmentTransparent()
 
-  def onSelectPreviousAutoThresholdMethod(self):
-    self.autoThresholdMethodSelectorComboBox.currentIndex = (self.autoThresholdMethodSelectorComboBox.currentIndex - 1) \
-      % self.autoThresholdMethodSelectorComboBox.count
-    self.onSelectedAutoThresholdMethod()
+    # Update intensity range
+    self.masterVolumeNodeChanged()
 
-  def onSelectNextAutoThresholdMethod(self):
-    self.autoThresholdMethodSelectorComboBox.currentIndex = (self.autoThresholdMethodSelectorComboBox.currentIndex + 1) \
-      % self.autoThresholdMethodSelectorComboBox.count
-    self.onSelectedAutoThresholdMethod()
-
-  def onSelectedAutoThresholdMethod(self):
-    self.updateMRMLFromGUI()
-    self.onAutoThreshold()
-    self.updateGUIFromMRML()
-
-  def onAutoThreshold(self):
-    autoThresholdMethod = self.scriptedEffect.parameter("AutoThresholdMethod")
-    autoThresholdMode = self.scriptedEffect.parameter("AutoThresholdMode")
-    self.autoThreshold(autoThresholdMethod, autoThresholdMode)
-
-  def autoThreshold(self, autoThresholdMethod, autoThresholdMode):
-    if autoThresholdMethod == METHOD_HUANG:
-      self.autoThresholdCalculator.SetMethodToHuang()
-    elif autoThresholdMethod == METHOD_INTERMODES:
-      self.autoThresholdCalculator.SetMethodToIntermodes()
-    elif autoThresholdMethod == METHOD_ISO_DATA:
-      self.autoThresholdCalculator.SetMethodToIsoData()
-    elif autoThresholdMethod == METHOD_KITTLER_ILLINGWORTH:
-      self.autoThresholdCalculator.SetMethodToKittlerIllingworth()
-    elif autoThresholdMethod == METHOD_LI:
-      self.autoThresholdCalculator.SetMethodToLi()
-    elif autoThresholdMethod == METHOD_MAXIMUM_ENTROPY:
-      self.autoThresholdCalculator.SetMethodToMaximumEntropy()
-    elif autoThresholdMethod == METHOD_MOMENTS:
-      self.autoThresholdCalculator.SetMethodToMoments()
-    elif autoThresholdMethod == METHOD_OTSU:
-      self.autoThresholdCalculator.SetMethodToOtsu()
-    elif autoThresholdMethod == METHOD_RENYI_ENTROPY:
-      self.autoThresholdCalculator.SetMethodToRenyiEntropy()
-    elif autoThresholdMethod == METHOD_SHANBHAG:
-      self.autoThresholdCalculator.SetMethodToShanbhag()
-    elif autoThresholdMethod == METHOD_TRIANGLE:
-      self.autoThresholdCalculator.SetMethodToTriangle()
-    elif autoThresholdMethod == METHOD_YEN:
-      self.autoThresholdCalculator.SetMethodToYen()
-    else:
-      logging.error("Unknown AutoThresholdMethod {0}".format(autoThresholdMethod))
-
-    masterImageData = self.scriptedEffect.masterVolumeImageData()
-    self.autoThresholdCalculator.SetInputData(masterImageData)
-
-    self.autoThresholdCalculator.Update()
-    computedThreshold = self.autoThresholdCalculator.GetThreshold()
-
-    masterVolumeMin, masterVolumeMax = masterImageData.GetScalarRange()
-
-    if autoThresholdMode == MODE_SET_UPPER:
-      self.scriptedEffect.setParameter("MaximumThreshold", computedThreshold)
-    elif autoThresholdMode == MODE_SET_LOWER:
-      self.scriptedEffect.setParameter("MinimumThreshold", computedThreshold)
-    elif autoThresholdMode == MODE_SET_MIN_UPPER:
-      self.scriptedEffect.setParameter("MinimumThreshold", masterVolumeMin)
-      self.scriptedEffect.setParameter("MaximumThreshold", computedThreshold)
-    elif autoThresholdMode == MODE_SET_LOWER_MAX:
-      self.scriptedEffect.setParameter("MinimumThreshold", computedThreshold)
-      self.scriptedEffect.setParameter("MaximumThreshold", masterVolumeMax)
-    else:
-      logging.error("Unknown AutoThresholdMode {0}".format(autoThresholdMode))
+    # Setup and start preview pulse
+    self.setupPreviewDisplay()
+    self.timer.start(200)
 
   def onApply(self):
     try:
@@ -399,6 +246,7 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
       self.scriptedEffect.addActor2D(sliceWidget, pipeline.actor)
 
   def preview(self):
+    """Set values to pipeline"""
 
     opacity = 0.5 + self.previewState / (2. * self.previewSteps)
     min = self.scriptedEffect.doubleParameter("MinimumThreshold")
@@ -438,6 +286,638 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
     if self.previewState <= 0:
       self.previewStep = 1
 
+
+
+class SRSFilterLogic(object):
+
+  def __init__(self, scriptedEffect):
+    self.scriptedEffect = scriptedEffect
+    self.logCallback = None
+
+  def srsFilter(self, inputImageData, outputImageData):
+
+    def polydataToImagedata(polydata):
+
+      outputImageData.DeepCopy(inputImageData)
+      
+      pol2stenc = vtk.vtkPolyDataToImageStencil()
+      pol2stenc.SetInputData(polydata)
+      pol2stenc.SetOutputOrigin(inputImageData.GetOrigin())
+      pol2stenc.SetOutputSpacing(inputImageData.GetSpacing())
+      pol2stenc.SetOutputWholeExtent(inputImageData.GetExtent())
+      pol2stenc.Update()
+
+      imgstenc = vtk.vtkImageStencil()
+      imgstenc.SetInputData(outputImageData)
+      imgstenc.SetStencilConnection(pol2stenc.GetOutputPort())
+      imgstenc.ReverseStencilOn()
+      imgstenc.SetBackgroundValue(1)
+      imgstenc.Update()
+
+      revimgstenc = vtk.vtkImageStencil()
+      revimgstenc.SetInputData(imgstenc.GetOutput())
+      revimgstenc.SetStencilConnection(pol2stenc.GetOutputPort())
+      revimgstenc.ReverseStencilOff()
+      revimgstenc.SetBackgroundValue(0)
+      revimgstenc.Update()
+
+      outputImageData.DeepCopy(revimgstenc.GetOutput())
+      
+      return outputImageData
+
+    def smoothPolydata(polydata):
+      decimator = vtk.vtkDecimatePro()
+      decimator.SetInputData(polydata)
+      decimator.SetFeatureAngle(60)
+      decimator.SplittingOff()
+      decimator.PreserveTopologyOn()
+      decimator.SetMaximumError(1)
+      decimator.SetTargetReduction(0.25)
+      decimator.ReleaseDataFlagOff()
+      decimator.Update()
+
+      smootherSinc = vtk.vtkWindowedSincPolyDataFilter()
+      smootherSinc.SetPassBand(0.1)
+      smootherSinc.SetInputConnection(decimator.GetOutputPort())
+      smootherSinc.SetNumberOfIterations(10)
+      smootherSinc.FeatureEdgeSmoothingOff()
+      smootherSinc.BoundarySmoothingOff()
+      smootherSinc.ReleaseDataFlagOn()
+      smootherSinc.Update()
+
+    OFFSETFIRSTSHRINKWRAP = self.scriptedEffect.doubleParameter('OffsetFirstShrinkwrap')
+    SPACINGFIRSTREMESH = self.scriptedEffect.doubleParameter('SpacingFirstRemesh')
+    ITERATIONSFIRSTSHRINKWRAP = int(self.scriptedEffect.doubleParameter('IterationsFirstShrinkwrap'))
+    ITERATIONSSECONDSHRINKWRAP = int(self.scriptedEffect.doubleParameter('IterationsSecondShrinkwrap'))
+    RAYCASTSEARCHEDGELENGTH = self.scriptedEffect.doubleParameter('RaycastSearchEdgeLength')
+    RAYCASTOUTPUTEDGELENGTH = self.scriptedEffect.doubleParameter('RaycastOutputEdgeLength')
+    RAYCASTMAXHITDISTANCE = self.scriptedEffect.doubleParameter('RaycastMaxHitDistance')
+    RAYCASTMAXLENGTH = self.scriptedEffect.doubleParameter('RaycastMaxLength')
+    RAYCASTMINLENGTH = self.scriptedEffect.doubleParameter('RaycastMinLength')
+    MAXMODELSDISTANCE = self.scriptedEffect.doubleParameter('MaxModelsDistance')
+    THICKNESS = self.scriptedEffect.doubleParameter('SolidificationThickness')
+    FILTERMODE = self.scriptedEffect.parameter('Filtermode')
+
+
+    # create model from segmentation
+    threshold = vtk.vtkImageThreshold()
+    threshold.SetInputData(inputImageData)
+    threshold.ThresholdBetween(0,0)
+    threshold.ReplaceOutOn()
+    threshold.ReplaceInOn()
+    threshold.SetInValue(0)
+    threshold.SetOutValue(1)
+    threshold.Update()
+
+    inputDiscreteCubes = vtk.vtkDiscreteMarchingCubes()
+    inputDiscreteCubes.SetInputData(threshold.GetOutput())
+    inputDiscreteCubes.GenerateValues(1,0,0)
+    inputDiscreteCubes.Update()
+
+    #region create sphere
+    bounds = np.array([0]*6)
+    inputDiscreteCubes.GetOutput().GetBounds(bounds)
+    dimensions = np.array([bounds[1]-bounds[0],bounds[3]-bounds[2],bounds[5]-bounds[4]])
+    center = np.array([bounds[0]+dimensions[0]/2, bounds[2]+dimensions[1]/2, bounds[4]+dimensions[2]/2])
+    radius = max(dimensions)
+
+    sphereSource = vtk.vtkSphereSource()
+    sphereSource.SetRadius(radius)
+    sphereSource.SetPhiResolution(int(radius/10))
+    sphereSource.SetThetaResolution(int(radius/10))
+    sphereSource.SetCenter(center)
+    sphereSource.Update()
+
+    cleanPolyData = vtk.vtkCleanPolyData()
+    cleanPolyData.SetInputConnection(sphereSource.GetOutputPort())
+    cleanPolyData.Update()
+
+    shrinkModelPD = vtk.vtkPolyData()
+    shrinkModelPD.DeepCopy(cleanPolyData.GetOutput())
+
+    #endregion
+
+    #region Shrinkwrap
+
+    cellLocator = vtk.vtkCellLocator()
+    cellLocator.SetDataSet(inputDiscreteCubes.GetOutput())
+    cellLocator.BuildLocator()
+
+    print 'celllocator created'
+
+    for x in range(ITERATIONSFIRSTSHRINKWRAP):
+      
+      points = shrinkModelPD.GetPoints()
+
+      for i in xrange(points.GetNumberOfPoints()):
+        originPoint = np.array(points.GetPoint(i))
+        closestPoint = np.array([0.0,0.0,0.0])
+        cell = vtk.vtkGenericCell()
+        cellId = vtk.mutable(0)
+        subId = vtk.mutable(0)
+        closestPointDist2 = vtk.mutable(0)
+
+        cellLocator.FindClosestPoint(originPoint, closestPoint, cell, cellId, subId, closestPointDist2)
+
+        vector = closestPoint - originPoint
+        vectorLength = np.linalg.norm(vector)
+
+        if OFFSETFIRSTSHRINKWRAP > 0 and vectorLength > 0.01:
+          newLocation = closestPoint - ((vector/vectorLength) * OFFSETFIRSTSHRINKWRAP)
+        else:
+          newLocation = closestPoint
+        
+        points.SetPoint(i, newLocation)
+      
+      shrinkModelPD.SetPoints(points)
+
+      if x == (ITERATIONSFIRSTSHRINKWRAP - 1):
+        if self.logCallback: self.logCallback('First shrinkwrap completed.')
+        break
+
+      # remesh
+      
+      whiteImage = vtk.vtkImageData()
+      bounds = [0]*6
+      shrinkModelPD.GetBounds(bounds)
+
+      spacing = [SPACINGFIRSTREMESH]*3
+      whiteImage.SetSpacing(spacing)
+
+      dim = [0]*3
+      for i in range(3):
+        dim[i] = int(math.ceil((bounds[i * 2 + 1] - bounds[i * 2]) / spacing[i])) + 1
+        if (dim[i] < 1):
+          dim[i] = 1
+      whiteImage.SetDimensions(dim)
+      #whiteImage.SetExtent(0, dim[0] - 1, 0, dim[1] - 1, 0, dim[2] - 1)
+      whiteImage.SetExtent(0, dim[0], 0, dim[1], 0, dim[2])
+      origin = [0]*3
+
+      origin[0] = bounds[0]# + spacing[0] / 2
+      origin[1] = bounds[2]# + spacing[1] / 2
+      origin[2] = bounds[4]# + spacing[2] / 2
+      whiteImage.SetOrigin(origin)
+
+      whiteImage.AllocateScalars(vtk.VTK_UNSIGNED_CHAR,1)
+
+      pol2stenc = vtk.vtkPolyDataToImageStencil()
+      pol2stenc.SetInputData(shrinkModelPD)
+
+      pol2stenc.SetOutputOrigin(origin)
+      pol2stenc.SetOutputSpacing(spacing)
+      pol2stenc.SetOutputWholeExtent(whiteImage.GetExtent())
+      pol2stenc.Update()
+
+      imgstenc = vtk.vtkImageStencil()
+      imgstenc.SetInputData(whiteImage)
+      imgstenc.SetStencilConnection(pol2stenc.GetOutputPort())
+      imgstenc.ReverseStencilOn()
+      imgstenc.SetBackgroundValue(1)
+      imgstenc.Update()
+
+      revimgstenc = vtk.vtkImageStencil()
+      revimgstenc.SetInputData(imgstenc.GetOutput())
+      revimgstenc.SetStencilConnection(pol2stenc.GetOutputPort())
+      revimgstenc.ReverseStencilOff()
+      revimgstenc.SetBackgroundValue(0)
+      revimgstenc.Update()
+
+      discreteCubes = vtk.vtkDiscreteMarchingCubes()
+      discreteCubes.SetInputConnection(revimgstenc.GetOutputPort())
+      discreteCubes.GenerateValues(1,0,0)
+      discreteCubes.Update()
+
+      reverse = vtk.vtkReverseSense()
+      reverse.SetInputConnection(discreteCubes.GetOutputPort())
+      reverse.ReverseCellsOn()
+      reverse.ReverseNormalsOn()
+      reverse.Update()
+
+      shrinkModelPD.DeepCopy(reverse.GetOutput())
+      if self.logCallback: self.logCallback('First shrinkwrap: %s/%s.' %(x+1, ITERATIONSFIRSTSHRINKWRAP))
+    
+    if FILTERMODE == 'SHALLOW':
+      return polydataToImagedata(shrinkModelPD)
+
+    #endregion
+
+    #region Raycast
+
+    # Find Large Faces and remember IDs of connected points
+    largeCellIds = vtk.vtkIdList() # IDs of cells
+    for i in xrange(shrinkModelPD.GetNumberOfCells()):
+      cell = shrinkModelPD.GetCell(i)
+
+      # get Length longest edge of cell
+      pointsArray = list()
+      for p in xrange(cell.GetNumberOfPoints()):
+        pointsArray.append(np.array(cell.GetPoints().GetPoint(p)))
+
+      edgeLength = list()
+      for pa in xrange(len(pointsArray) - 1):
+        length = np.linalg.norm(pointsArray[pa] - pointsArray[pa + 1])
+        edgeLength.append(length)
+
+      if max(edgeLength) > RAYCASTSEARCHEDGELENGTH:
+        largeCellIds.InsertNextId(i)
+
+    # extract large cells for cell point localization
+
+    largeCellsPolyData = vtk.vtkPolyData()
+    largeCellsPolyData.DeepCopy(shrinkModelPD)
+    largeCellsPolyData.BuildLinks()
+
+    for c in xrange(largeCellsPolyData.GetNumberOfCells()):
+      if largeCellIds.IsId(c) == -1:
+        largeCellsPolyData.DeleteCell(c)
+
+    largeCellsPolyData.RemoveDeletedCells()
+
+    # subdivide
+    ids = vtk.vtkIdFilter()
+    adapt = vtk.vtkAdaptiveSubdivisionFilter()
+    adapt.SetInputData(shrinkModelPD)
+    adapt.SetMaximumEdgeLength(RAYCASTOUTPUTEDGELENGTH)
+    adapt.SetMaximumTriangleArea(vtk.VTK_INT_MAX)
+    adapt.SetMaximumNumberOfPasses(vtk.VTK_INT_MAX)
+    adapt.Update()
+
+    clean = vtk.vtkCleanPolyData()
+    clean.SetInputData(adapt.GetOutput())
+    clean.Update()
+
+    shrinkModelPD.DeepCopy(clean.GetOutput())
+
+    if largeCellIds.GetNumberOfIds() > 0 and RAYCASTMAXLENGTH > 0.0:
+
+      # locate the points of previous large cells and write into largePointIds Set
+      largeDistance = vtk.vtkImplicitPolyDataDistance()
+      largeDistance.SetInput(largeCellsPolyData)
+
+      largePointIds = set()
+      for p in xrange(shrinkModelPD.GetNumberOfPoints()):
+        point = [0.0]*3
+        shrinkModelPD.GetPoints().GetPoint(p, point)
+        distance = largeDistance.EvaluateFunction(point)
+        if abs(distance) < 1:
+          largePointIds.update([p])
+
+      # generate normals
+
+      normals = vtk.vtkPolyDataNormals()
+      normals.ComputePointNormalsOn()
+      normals.ComputeCellNormalsOff()
+      normals.SplittingOff()
+      normals.SetInputData(shrinkModelPD)
+      normals.AutoOrientNormalsOff()
+      normals.FlipNormalsOff()
+      normals.Update()
+
+      shrinkModelPD.DeepCopy(normals.GetOutput())
+    
+      # projection
+      vert_location_dict = {} # dict to save all projection results
+
+      for i in xrange(shrinkModelPD.GetNumberOfCells()):
+        cell = shrinkModelPD.GetCell(i)
+        pointIds = cell.GetPointIds()
+        
+        if cell.GetCellType() == 5: # cell with face
+          for p in xrange(pointIds.GetNumberOfIds()):
+            pointId = pointIds.GetId(p)
+
+            # check if cell with point was large before subdividion, and if point got checked already
+            if not pointId in largePointIds or (vert_location_dict.has_key(pointId) and vert_location_dict[pointId][0] == False):
+              
+              # random False value, won't be moved
+              vert_location_dict.update({pointId:(False,np.array([0.0,0.0,0.0]),0.0)})
+
+            else:
+              cell = shrinkModelPD.GetCell(i)
+              pointId = cell.GetPointIds().GetId(p)
+              normal = np.array(shrinkModelPD.GetPointData().GetArray('Normals').GetTuple(pointId)) * (-1)
+              vector = normal * RAYCASTMAXLENGTH # max Length greater 0, checked above
+
+              points = cell.GetPoints()
+
+              # find intersection (point + vector) and label model
+              a0 = points.GetPoint(p)
+              a1 = a0 + vector
+              tol = 1.0
+
+              t = vtk.mutable(0)
+              glo = np.array([0.0,0.0,0.0]) #global
+              par = np.array([0.0,0.0,0.0]) #parametric
+              cell = vtk.vtkGenericCell()
+              cellId = vtk.mutable(0)
+              subId = vtk.mutable(0)
+              cellLocator.IntersectWithLine(a0, a1, tol, t, glo, par, subId, cellId, cell)
+
+              loc_new = np.array(glo) - (normal * 0.5)
+              length = np.linalg.norm(glo - a0)
+              res = False
+              if np.linalg.norm(glo) != 0:
+                res = True
+              vert_location_dict.update({pointId:(res,loc_new,length)})
+
+      numberOfPoints = shrinkModelPD.GetNumberOfPoints()
+
+      for i in xrange(numberOfPoints):
+        # check result
+        if vert_location_dict[i][0] == True:
+          # check min length
+          if vert_location_dict[i][2] > RAYCASTMINLENGTH:
+            
+            # check distance between two new locations with positive result
+            cellIds = vtk.vtkIdList()
+            shrinkModelPD.GetPointCells(i, cellIds)
+            pointChanged = False
+            for c in xrange(cellIds.GetNumberOfIds()):
+              if pointChanged == True:
+                break
+              cell = shrinkModelPD.GetCell(cellIds.GetId(c))
+              pointIds = cell.GetPointIds()
+              for p in xrange(pointIds.GetNumberOfIds()):
+                if pointChanged == True:
+                  break
+                pointId = pointIds.GetId(p)
+                if pointId != i and vert_location_dict[pointId][0] == True:
+                  point = vert_location_dict[pointId][1]
+                  distance = np.linalg.norm(-vert_location_dict[i][1] + point)
+                  if distance < RAYCASTMAXHITDISTANCE:
+                    shrinkModelPD.GetPoints().SetPoint(i, vert_location_dict[i][1])
+                    pointChanged = True
+    if self.logCallback: self.logCallback('Raycast completed.')
+
+    if FILTERMODE == 'RAYCAST':
+      return polydataToImagedata(shrinkModelPD)
+    
+    #endregion
+
+    #region Shrinkwrap
+
+    for x in range(ITERATIONSSECONDSHRINKWRAP):
+      
+      # remesh
+      
+      whiteImage = vtk.vtkImageData()
+      bounds = [0]*6
+      shrinkModelPD.GetBounds(bounds)
+
+      #spacing = [SPACINGSECONDREMESH]*3
+      spacing = inputImageData.GetSpacing()
+      whiteImage.SetSpacing(spacing)
+
+      dim = [0]*3
+      for i in range(3):
+        dim[i] = int(math.ceil((bounds[i * 2 + 1] - bounds[i * 2]) / spacing[i])) + 1
+        if (dim[i] < 1):
+          dim[i] = 1
+      whiteImage.SetDimensions(dim)
+      #whiteImage.SetExtent(0, dim[0] - 1, 0, dim[1] - 1, 0, dim[2] - 1)
+      whiteImage.SetExtent(0, dim[0], 0, dim[1], 0, dim[2])
+      origin = [0]*3
+
+      origin[0] = bounds[0]# + spacing[0] / 2
+      origin[1] = bounds[2]# + spacing[1] / 2
+      origin[2] = bounds[4]# + spacing[2] / 2
+      whiteImage.SetOrigin(origin)
+
+      whiteImage.AllocateScalars(vtk.VTK_UNSIGNED_CHAR,1)
+
+      pol2stenc = vtk.vtkPolyDataToImageStencil()
+      pol2stenc.SetInputData(shrinkModelPD)
+
+      pol2stenc.SetOutputOrigin(origin)
+      pol2stenc.SetOutputSpacing(spacing)
+      pol2stenc.SetOutputWholeExtent(whiteImage.GetExtent())
+      pol2stenc.Update()
+
+      imgstenc = vtk.vtkImageStencil()
+      imgstenc.SetInputData(whiteImage)
+      imgstenc.SetStencilConnection(pol2stenc.GetOutputPort())
+      imgstenc.ReverseStencilOn()
+      imgstenc.SetBackgroundValue(1)
+      imgstenc.Update()
+
+      revimgstenc = vtk.vtkImageStencil()
+      revimgstenc.SetInputData(imgstenc.GetOutput())
+      revimgstenc.SetStencilConnection(pol2stenc.GetOutputPort())
+      revimgstenc.ReverseStencilOff()
+      revimgstenc.SetBackgroundValue(0)
+      revimgstenc.Update()
+
+      discreteCubes = vtk.vtkDiscreteMarchingCubes()
+      discreteCubes.SetInputConnection(revimgstenc.GetOutputPort())
+      discreteCubes.GenerateValues(1,0,0)
+      discreteCubes.Update()
+
+      reverse = vtk.vtkReverseSense()
+      reverse.SetInputConnection(discreteCubes.GetOutputPort())
+      reverse.ReverseCellsOn()
+      reverse.ReverseNormalsOn()
+      reverse.Update()
+
+      shrinkModelPD.DeepCopy(reverse.GetOutput())
+
+      if x == (ITERATIONSSECONDSHRINKWRAP - 1):
+        if self.logCallback: self.logCallback('Second shrinkwrap completed.')
+        break
+
+      # shrinkwrap
+
+      smoothFilter = vtk.vtkSmoothPolyDataFilter()
+      smoothFilter.SetInputData(0, shrinkModelPD)
+      smoothFilter.SetInputData(1, inputDiscreteCubes.GetOutput())
+      smoothFilter.Update()
+      
+      shrinkModelPD.DeepCopy(smoothFilter.GetOutput())
+
+      if self.logCallback: self.logCallback('Second shrinkwrap: %s/%s.' %(x+1, ITERATIONSSECONDSHRINKWRAP))
+    
+    if FILTERMODE == 'DEEP':
+      return polydataToImagedata(shrinkModelPD)
+
+    #endregion
+
+    # region Remove Caps
+
+    # implicit distance, add point ids with larger distance to ids
+    implicitDistance = vtk.vtkImplicitPolyDataDistance()
+    implicitDistance.SetInput(inputDiscreteCubes.GetOutput())
+    
+    # delete cells in great distance
+    nonsolidPolyData = vtk.vtkPolyData()
+    nonsolidPolyData.DeepCopy(shrinkModelPD)
+    nonsolidPolyData.BuildLinks()
+
+    for c in range(nonsolidPolyData.GetNumberOfCells()):
+      cell = nonsolidPolyData.GetCell(c)
+      points = cell.GetPoints()
+      for p in xrange(points.GetNumberOfPoints()):
+        point = points.GetPoint(p)
+        distance = implicitDistance.EvaluateFunction(point)
+
+        if abs(distance) > MAXMODELSDISTANCE:
+          nonsolidPolyData.DeleteCell(c)
+          break
+
+    nonsolidPolyData.RemoveDeletedCells()
+    shrinkModelPD.DeepCopy(nonsolidPolyData)
+    if self.logCallback: self.logCallback('Caps removed.')
+
+    if FILTERMODE == 'NONSOLID':
+      
+      modelsLogic = slicer.modules.models.logic()
+      modelNode = modelsLogic.AddModel(smoothPolydata(shrinkModelPD))
+      seg = self.scriptedEffect.parameterSetNode().GetSegmentationNode().GetSegmentation().GetSegment(self.scriptedEffect.parameterSetNode().GetSelectedSegmentID())
+      modelNode.GetDisplayNode().SetColor(seg.GetColor())
+      modelNode.SetName(seg.GetName())
+      outputImageData.DeepCopy(inputImageData)
+      
+      return outputImageData
+
+    #endregion
+
+    #region Solidification
+
+    # remove double vertices
+    cleanPolyData = vtk.vtkCleanPolyData()
+    cleanPolyData.SetInputData(shrinkModelPD)
+    cleanPolyData.Update()
+
+    # create normals
+    normals = vtk.vtkPolyDataNormals()
+    normals.SetComputeCellNormals(1)
+    normals.SetInputData(cleanPolyData.GetOutput())
+    normals.SplittingOff()
+    normals.Update()
+
+    polydata = vtk.vtkPolyData()
+    polydata.DeepCopy(normals.GetOutput())
+    numberOfPoints = polydata.GetNumberOfPoints()
+
+    # get boundary edges, used later
+    featureEdges = vtk.vtkFeatureEdges()
+    featureEdges.BoundaryEdgesOn()
+    featureEdges.ColoringOff()
+    featureEdges.FeatureEdgesOff()
+    featureEdges.NonManifoldEdgesOff()
+    featureEdges.ManifoldEdgesOff()
+    featureEdges.SetInputData(normals.GetOutput())
+    featureEdges.Update()
+
+    addingPoints = []
+    addingPolys = []
+
+
+    for pointID in range(numberOfPoints):
+      cellIDs = vtk.vtkIdList()
+      polydata.GetPointCells(pointID, cellIDs)
+      normalsArray = []
+
+      
+      # ilterate through all cells/faces which contain point
+      for id in xrange(cellIDs.GetNumberOfIds()):
+        # faceData = []
+        n = []
+        n.append(polydata.GetCellData().GetArray('Normals').GetValue(cellIDs.GetId(id)*3))
+        n.append(polydata.GetCellData().GetArray('Normals').GetValue(cellIDs.GetId(id)*3 + 1))
+        n.append(polydata.GetCellData().GetArray('Normals').GetValue(cellIDs.GetId(id)*3 + 2))
+
+        normalsArray.append(np.array(n) * (-1))
+
+      # calculate position of new vert
+      dir_vec = np.zeros(3)
+      
+      for n in normalsArray:
+        dir_vec = dir_vec + np.array(n)
+
+      dir_vec_norm = dir_vec / np.linalg.norm(dir_vec)
+      proj_length = np.dot(dir_vec_norm, np.array(normalsArray[0]))
+      dir_vec_finallenght = dir_vec_norm * proj_length
+      vertex_neu = np.array(polydata.GetPoint(pointID)) + (dir_vec_finallenght * THICKNESS)
+      
+      # append point
+      addingPoints.append(vertex_neu)
+
+    for cellID in range(polydata.GetNumberOfCells()):
+      pointIDs = vtk.vtkIdList()
+      polydata.GetCellPoints(cellID, pointIDs)
+
+      newPointIDs = vtk.vtkIdList()
+      for i in reversed(range(pointIDs.GetNumberOfIds())):
+        newPointIDs.InsertNextId(int(pointIDs.GetId(i) + numberOfPoints))
+
+      addingPolys.append(newPointIDs)
+
+    doubleSurfacePoints = vtk.vtkPoints()
+    doubleSurfacePolys = vtk.vtkCellArray()
+
+    doubleSurfacePoints.DeepCopy(polydata.GetPoints())
+    doubleSurfacePolys.DeepCopy(polydata.GetPolys())
+
+    for p in addingPoints:
+      doubleSurfacePoints.InsertNextPoint(p)
+    for p in addingPolys:
+      doubleSurfacePolys.InsertNextCell(p)
+
+    doubleSurfacePD = vtk.vtkPolyData()
+    doubleSurfacePD.SetPoints(doubleSurfacePoints)
+    doubleSurfacePD.SetPolys(doubleSurfacePolys)
+
+    # add faces to boundary edges
+    mergePoints = vtk.vtkMergePoints()
+    mergePoints.InitPointInsertion(doubleSurfacePD.GetPoints(), doubleSurfacePD.GetBounds())
+    mergePoints.SetDataSet(doubleSurfacePD)
+    mergePoints.BuildLocator()
+
+    manifoldPolys = vtk.vtkCellArray()
+    manifoldPolys.DeepCopy(doubleSurfacePD.GetPolys())
+    manifoldPoints = vtk.vtkPoints()
+    manifoldPoints.DeepCopy(doubleSurfacePD.GetPoints())
+
+    for e in range(featureEdges.GetOutput().GetNumberOfCells()):
+      pointIDs = vtk.vtkIdList()
+      featureEdges.GetOutput().GetCellPoints(e, pointIDs)
+      if pointIDs.GetNumberOfIds() == 2: # -> Edge
+        matchingPointIDs = []
+        newPointIDs = vtk.vtkIdList()
+        for p in range(2):
+          matchingPointIDs.append(mergePoints.IsInsertedPoint(featureEdges.GetOutput().GetPoint(pointIDs.GetId(p))))
+        if not (-1) in matchingPointIDs: # edge vertex not found in original pd, should not happen
+          newPointIDs.InsertNextId(matchingPointIDs[1])
+          newPointIDs.InsertNextId(matchingPointIDs[0])
+          newPointIDs.InsertNextId(matchingPointIDs[0]+numberOfPoints)
+          newPointIDs.InsertNextId(matchingPointIDs[1]+numberOfPoints)
+          manifoldPolys.InsertNextCell(newPointIDs)
+
+    manifoldPD = vtk.vtkPolyData()
+    manifoldPD.SetPoints(manifoldPoints)
+    manifoldPD.SetPolys(manifoldPolys)
+
+    triangleFilter = vtk.vtkTriangleFilter()
+    triangleFilter.SetInputData(manifoldPD)
+    triangleFilter.Update()
+
+    shrinkModelPD.DeepCopy(triangleFilter.GetOutput())
+    if self.logCallback: self.logCallback('Model solidified.')
+
+    if FILTERMODE == 'SOLID':
+      modelsLogic = slicer.modules.models.logic()
+      modelNode = modelsLogic.AddModel(smoothPolydata(shrinkModelPD))
+      seg = self.scriptedEffect.parameterSetNode().GetSegmentationNode().GetSegmentation().GetSegment(self.scriptedEffect.parameterSetNode().GetSelectedSegmentID())
+      modelNode.GetDisplayNode().SetColor(seg.GetColor())
+      modelNode.SetName(seg.GetName())
+      outputImageData.DeepCopy(inputImageData)
+      
+      return outputImageData
+
+    return polydataToImagedata(shrinkModelPD)
+    #endregion
+      
+
 #
 # PreviewPipeline
 #
@@ -474,24 +954,3 @@ class PreviewPipeline(object):
     self.colorMapper.SetInputConnection(self.thresholdFilter.GetOutputPort())
     self.mapper.SetInputConnection(self.colorMapper.GetOutputPort())
 
-
-
-###
-
-METHOD_HUANG = 'HUANG'
-METHOD_INTERMODES = 'INTERMODES'
-METHOD_ISO_DATA = 'ISO_DATA'
-METHOD_KITTLER_ILLINGWORTH = 'KITTLER_ILLINGWORTH'
-METHOD_LI = 'LI'
-METHOD_MAXIMUM_ENTROPY = 'MAXIMUM_ENTROPY'
-METHOD_MOMENTS = 'MOMENTS'
-METHOD_OTSU = 'OTSU'
-METHOD_RENYI_ENTROPY = 'RENYI_ENTROPY'
-METHOD_SHANBHAG = 'SHANBHAG'
-METHOD_TRIANGLE = 'TRIANGLE'
-METHOD_YEN = 'YEN'
-
-MODE_SET_UPPER = 'SET_UPPER'
-MODE_SET_LOWER = 'SET_LOWER'
-MODE_SET_MIN_UPPER = 'SET_MIN_UPPER'
-MODE_SET_LOWER_MAX = 'SET_LOWER_MAX'
