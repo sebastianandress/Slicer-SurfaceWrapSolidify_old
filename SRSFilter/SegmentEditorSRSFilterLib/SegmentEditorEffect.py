@@ -2,6 +2,8 @@ import os
 import vtk, qt, ctk, slicer
 import logging
 from SegmentEditorEffects import *
+import numpy as np
+import math
 
 class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
   """This effect uses Watershed algorithm to partition the input volume"""
@@ -27,6 +29,47 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
 
     self.logic = SRSFilterLogic(scriptedEffect)
     self.logic.logCallback = self.addLog
+
+    # parameters
+    self.parameters = []
+    self.offsetFirstShrinkwrapSlider = None
+    self.parameters.append({'slider':self.offsetFirstShrinkwrapSlider, 'max':50.0, 'min':1.0,'default':15.0, 'interval':0.1, 'name':'Offset First Shrinkwrap:', 'id':'OffsetFirstShrinkwrap','tooltip':''})
+    self.spacingFirstRemeshSlider = None
+    self.parameters.append({'slider':self.spacingFirstRemeshSlider, 'max':50.0, 'min':0.1,'default':10.0, 'interval':0.01, 'name':'Spacing First Remesh:', 'id':'SpacingFirstRemesh','tooltip':''})
+    self.iterationsFirstShrinkwrapSlider = None
+    self.parameters.append({'slider':self.iterationsFirstShrinkwrapSlider, 'max':10, 'min':1,'default':3, 'interval':1, 'name':'Iterations First Shrinkwrap:', 'id':'IterationsFirstShrinkwrap','tooltip':''})
+    self.iterationsSecondShrinkwrapSlider = None
+    self.parameters.append({'slider':self.iterationsSecondShrinkwrapSlider, 'max':10, 'min':1,'default':5, 'interval':1, 'name':'Iterations Second Shrinkwrap:', 'id':'IterationsSecondShrinkwrap','tooltip':''})
+    self.raycastSearchEdgeLengthSlider = None
+    self.parameters.append({'slider':self.raycastSearchEdgeLengthSlider, 'max':100.0, 'min':0.1,'default':20.0, 'interval':0.1, 'name':'Raycast Search Edge Length:', 'id':'RaycastSearchEdgeLength','tooltip':''})
+    self.raycastOutputEdgeLengthSlider = None
+    self.parameters.append({'slider':self.raycastOutputEdgeLengthSlider, 'max':100.0, 'min':0.1,'default':2.0, 'interval':0.1, 'name':'Raycast Output Edge Length:', 'id':'RaycastOutputEdgeLength','tooltip':''})
+    self.raycastMaxHitDistanceSlider = None
+    self.parameters.append({'slider':self.raycastMaxHitDistanceSlider, 'max':50.0, 'min':0.1,'default':2.0, 'interval':0.01, 'name':'Raycast Max. Hit Distance:', 'id':'RaycastMaxHitDistance','tooltip':''})
+    self.raycastMaxLengthSlider = None
+    self.parameters.append({'slider':self.raycastMaxLengthSlider, 'max':1000.0, 'min':0.1,'default':100.0, 'interval':0.1, 'name':'Raycast Max. Length:', 'id':'RaycastMaxLength','tooltip':''})
+    self.raycastMinLengthSlider = None
+    self.parameters.append({'slider':self.raycastMinLengthSlider, 'max':1000.0, 'min':0.0,'default':0.0, 'interval':0.1, 'name':'Raycast Min. Length:', 'id':'RaycastMinLength','tooltip':''})
+    self.maxModelsDistanceSlider = None
+    self.parameters.append({'slider':self.maxModelsDistanceSlider, 'max':10, 'min':0.01,'default':0.5, 'interval':0.01, 'name':'Max. Models Distance:', 'id':'MaxModelsDistance','tooltip':''})
+    self.solidificationThicknessSlider = None
+    self.parameters.append({'slider':self.solidificationThicknessSlider, 'max':20.0, 'min':0.1,'default':1.5, 'interval':0.1, 'name':'Solidification Thickness:', 'id':'SolidificationThickness','tooltip':''})
+    
+    # filter modes
+    self.filterModeTypeMap = {}
+    self.filterModes = []
+    self.surfaceButton = None
+    self.filterModes.append({'button':self.surfaceButton, 'name':'Surface', 'id':'SURFACE', 'default':True})
+    self.hullShallowButton = None
+    self.filterModes.append({'button':self.hullShallowButton, 'name':'Hull Shallow', 'id':'SHALLOW','default':False})
+    self.raycastResultButton = None
+    self.filterModes.append({'button':self.raycastResultButton, 'name':'Raycast Result', 'id':'RAYCAST','default':False})
+    self.hullDeepButton = None
+    self.filterModes.append({'button':self.hullDeepButton, 'name':'Hull Deep', 'id':'DEEP','default':False})
+    self.nonmanifoldModelButton = None
+    self.filterModes.append({'button':self.nonmanifoldModelButton, 'name':'Solid Model', 'id':'NONSOLID','default':False})
+    self.manifoldModelButton = None
+    self.filterModes.append({'button':self.manifoldModelButton, 'name':'Non-Manifold Model', 'id':'SOLID','default':False})
 
   def clone(self):
     # It should not be necessary to modify this method
@@ -105,15 +148,7 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
     self.previewedSegmentID = None
 
   def setupOptionsFrame(self):
-    self.thresholdSliderLabel = qt.QLabel("Threshold Range:")
-    self.thresholdSliderLabel.setToolTip("Set the range of the background values that should be labeled.")
-    self.scriptedEffect.addOptionsWidget(self.thresholdSliderLabel)
-
-    self.thresholdSlider = ctk.ctkRangeWidget()
-    self.thresholdSlider.spinBoxAlignment = qt.Qt.AlignTop
-    self.thresholdSlider.singleStep = 0.01
-    self.scriptedEffect.addOptionsWidget(self.thresholdSlider)
-
+    
     self.updatePreviewButton = qt.QPushButton("Update Preview")
     self.updatePreviewButton.objectName = self.__class__.__name__ + 'Update Preview'
     self.updatePreviewButton.setToolTip("Fill selected segment in regions that are in the specified intensity range.")
@@ -124,9 +159,43 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
     self.applyButton.setToolTip("Fill selected segment in regions that are in the specified intensity range.")
     self.scriptedEffect.addOptionsWidget(self.applyButton)
 
-    self.thresholdSlider.connect('valuesChanged(double,double)', self.onThresholdValuesChanged)
     self.applyButton.connect('clicked()', self.onApply)
     self.updatePreviewButton.connect('clicked()', self.onUpdatePreview)
+
+    # setup parameters
+    for param in self.parameters:
+      param['slider'] = slicer.qMRMLSliderWidget()
+      param['slider'].setMRMLScene(slicer.mrmlScene)
+      #param['slider'].quantity = "length" # get unit, precision, etc. from MRML unit node
+      param['slider'].minimum = param['min']
+      param['slider'].maximum = param['max']
+      param['slider'].tickInterval = param['interval']
+      param['slider'].value = param['default']
+      param['slider'].setToolTip(param['tooltip'])
+      self.scriptedEffect.addLabeledOptionsWidget(param['name'], param['slider'])
+      param['slider'].connect('valueChanged(double)', self.updateMRMLFromGUI)
+
+    # setup filter modes
+    filterModeLayout = qt.QGridLayout()
+    columnCount = 0
+    rowCount = 0
+    self.filterModeButtons = []
+    for mode in self.filterModes:
+      mode['button'] = qt.QRadioButton(mode['name'])
+      self.filterModeButtons.append(mode['button'])
+      self.filterModeTypeMap[mode['button']] = mode['id']
+      mode['button'].connect('toggled(bool)', self.updateMRMLFromGUI)
+      
+      filterModeLayout.addWidget(mode['button'], rowCount, columnCount)
+      
+      if columnCount >= 2:
+        columnCount = 0
+        rowCount += 1
+      else:
+        columnCount += 1
+
+    self.scriptedEffect.addLabeledOptionsWidget("Filter Mode:", filterModeLayout)
+
 
   def createCursor(self, widget):
     # Turn off effect-specific cursor for this effect
@@ -142,36 +211,42 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
     pass # For the sake of example
 
   def setMRMLDefaults(self):
-    self.scriptedEffect.setParameterDefault("MinimumThreshold", 0.)
-    self.scriptedEffect.setParameterDefault("MaximumThreshold", 0)
+    for param in self.parameters:
+      self.scriptedEffect.setParameterDefault(param['id'], param['default'])
+
+    self.scriptedEffect.setParameterDefault("Filtermode", next(item for item in self.filterModes if item['default'] == True)['id'])
 
   def updateGUIFromMRML(self):
-    self.thresholdSlider.blockSignals(True)
-    self.thresholdSlider.setMinimumValue(self.scriptedEffect.doubleParameter("MinimumThreshold"))
-    self.thresholdSlider.setMaximumValue(self.scriptedEffect.doubleParameter("MaximumThreshold"))
-    self.thresholdSlider.blockSignals(False)
-
+    for param in self.parameters:
+      value = self.scriptedEffect.doubleParameter(param['id'])
+      wasBlocked = param['slider'].blockSignals(True)
+      param['slider'].value = abs(value)
+      param['slider'].blockSignals(wasBlocked)
+    
+    filterModeName = self.scriptedEffect.parameter("Filtermode")
+    filterModeButton = list(self.filterModeTypeMap.keys())[list(self.filterModeTypeMap.values()).index(filterModeName)]
+    filterModeButton.setChecked(True)
 
   def updateMRMLFromGUI(self):
-    self.scriptedEffect.setParameter("MinimumThreshold", self.thresholdSlider.minimumValue)
-    self.scriptedEffect.setParameter("MaximumThreshold", self.thresholdSlider.maximumValue)
+    for param in self.parameters:
+      self.scriptedEffect.setParameter(param['id'], param['slider'].value)
 
+    for button in self.filterModeTypeMap:
+      if button.isChecked():
+        self.scriptedEffect.setParameter("Filtermode", self.filterModeTypeMap[button])
+  
 
   #
   # Effect specific methods (the above ones are the API methods to override)
   #
 
-
-  def onThresholdValuesChanged(self,min,max):
-    self.scriptedEffect.updateMRMLFromGUI()
-
   def onUpdatePreview(self):
-    self.setCurrentSegmentTransparent()
 
     # run SRS-Filter
     self.createFilteredImageData()
 
     # Setup and start preview pulse
+    self.setCurrentSegmentTransparent()
     self.setupPreviewDisplay()
     self.timer.start(200)
 
@@ -180,60 +255,32 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
     self.scriptedEffect.saveStateForUndo()
 
     # Apply changes
+    # check if self.filteredOrientedImageData is empty
+
     self.scriptedEffect.modifySelectedSegmentByLabelmap(self.filteredOrientedImageData, slicer.qSlicerSegmentEditorAbstractEffect.ModificationModeSet)
+    self.filteredOrientedImageData = None
 
     # De-select effect
     self.scriptedEffect.selectEffect("")
 
   def createFilteredImageData(self):
     
-    # selectedSegmentLabelmap = self.scriptedEffect.selectedSegmentLabelmap()
-    # segmentationNode = self.scriptedEffect.parameterSetNode().GetSegmentationNode()
-    # selectedSegmentID = self.scriptedEffect.parameterSetNode().GetSelectedSegmentID()
-    # #modifierLabelmap = self.scriptedEffect.defaultModifierLabelmap()
-    
-    # # filter
-    # thresh = vtk.vtkImageThreshold()
-    # thresh.SetInputData(selectedSegmentLabelmap)
-    # thresh.ThresholdBetween(1,1)
-    # thresh.SetInValue(1)
-    # thresh.SetOutValue(0)
-    # #thresh.SetOutputScalarType(masterImageData.GetScalarType())
-    # thresh.Update()
-
-    # #self.logic.srsFilter(inputImageData, self.filteredImageData)
-
-    # # transform
-    # import vtkSegmentationCorePython as vtkSegmentationCore
-    # self.filteredOrientedImageData = vtkSegmentationCore.vtkOrientedImageData()
-    # self.filteredOrientedImageData.DeepCopy(thresh.GetOutput())
-    # selectedSegmentLabelmapImageToWorldMatrix = vtk.vtkMatrix4x4()
-    # selectedSegmentLabelmap.GetImageToWorldMatrix(selectedSegmentLabelmapImageToWorldMatrix)
-    # self.filteredOrientedImageData.SetImageToWorldMatrix(selectedSegmentLabelmapImageToWorldMatrix)
-    
-    # self.scriptedEffect.modifySelectedSegmentByLabelmap(self.filteredOrientedImageData, slicer.qSlicerSegmentEditorAbstractEffect.ModificationModeSet)
-    
-    
-    # # selectedSegmentIndex = segmentationNode.GetSegmentation().GetSegmentIndex(selectedSegmentID)
-    # # selectedSegmentName = segmentationNode.GetSegmentation().GetSegment(selectedSegmentID).GetName()
-    # # slicer.vtkSlicerSegmentationsModuleLogic.ImportLabelmapToSegmentationNode(self.filteredOrientedImageData, segmentationNode, selectedSegmentName+" -", selectedSegmentID )
+    qt.QApplication.setOverrideCursor(qt.Qt.WaitCursor)
 
     # Get master volume image data
     import vtkSegmentationCorePython
 
     # Get modifier labelmap
-    self.filteredOrientedImageData = self.scriptedEffect.defaultModifierLabelmap()
     selectedSegmentLabelmap = self.scriptedEffect.selectedSegmentLabelmap()
 
-    thresh = vtk.vtkImageThreshold()
-    thresh.SetInputData(selectedSegmentLabelmap)
-    thresh.ThresholdBetween(1,1)
-    thresh.SetInValue(0)
-    thresh.SetOutValue(1)
-    thresh.SetOutputScalarType(vtk.VTK_UNSIGNED_CHAR)
-    thresh.Update()
+    #TODO: check if segment is not empty
 
-    self.filteredOrientedImageData.DeepCopy(thresh.GetOutput())
+    self.logic.srsFilter(self.scriptedEffect.defaultModifierLabelmap(), self.filteredOrientedImageData)
+
+    slicer.util.showStatusMessage('')
+    qt.QApplication.restoreOverrideCursor()
+    
+    #self.filteredOrientedImageData.DeepCopy(thresh.GetOutput())
     
 
   def clearPreviewDisplay(self):
@@ -388,6 +435,8 @@ class SRSFilterLogic(object):
       smootherSinc.ReleaseDataFlagOn()
       smootherSinc.Update()
 
+      return smootherSinc.GetOutput()
+
     OFFSETFIRSTSHRINKWRAP = self.scriptedEffect.doubleParameter('OffsetFirstShrinkwrap')
     SPACINGFIRSTREMESH = self.scriptedEffect.doubleParameter('SpacingFirstRemesh')
     ITERATIONSFIRSTSHRINKWRAP = int(self.scriptedEffect.doubleParameter('IterationsFirstShrinkwrap'))
@@ -400,6 +449,19 @@ class SRSFilterLogic(object):
     MAXMODELSDISTANCE = self.scriptedEffect.doubleParameter('MaxModelsDistance')
     THICKNESS = self.scriptedEffect.doubleParameter('SolidificationThickness')
     FILTERMODE = self.scriptedEffect.parameter('Filtermode')
+
+    # OFFSETFIRSTSHRINKWRAP = 15# self.scriptedEffect.doubleParameter('OffsetFirstShrinkwrap')
+    # SPACINGFIRSTREMESH = 10#self.scriptedEffect.doubleParameter('SpacingFirstRemesh')
+    # ITERATIONSFIRSTSHRINKWRAP = 3#int(self.scriptedEffect.doubleParameter('IterationsFirstShrinkwrap'))
+    # ITERATIONSSECONDSHRINKWRAP = 5#int(self.scriptedEffect.doubleParameter('IterationsSecondShrinkwrap'))
+    # RAYCASTSEARCHEDGELENGTH = 20#self.scriptedEffect.doubleParameter('RaycastSearchEdgeLength')
+    # RAYCASTOUTPUTEDGELENGTH = 2#self.scriptedEffect.doubleParameter('RaycastOutputEdgeLength')
+    # RAYCASTMAXHITDISTANCE = 2#self.scriptedEffect.doubleParameter('RaycastMaxHitDistance')
+    # RAYCASTMAXLENGTH = 100#self.scriptedEffect.doubleParameter('RaycastMaxLength')
+    # RAYCASTMINLENGTH = 0#self.scriptedEffect.doubleParameter('RaycastMinLength')
+    # MAXMODELSDISTANCE = 0.5#elf.scriptedEffect.doubleParameter('MaxModelsDistance')
+    # THICKNESS = 1.5#self.scriptedEffect.doubleParameter('SolidificationThickness')
+    # FILTERMODE = 'SHALLOW'#self.scriptedEffect.parameter('Filtermode')
 
 
     # create model from segmentation
@@ -445,8 +507,6 @@ class SRSFilterLogic(object):
     cellLocator = vtk.vtkCellLocator()
     cellLocator.SetDataSet(inputDiscreteCubes.GetOutput())
     cellLocator.BuildLocator()
-
-    print 'celllocator created'
 
     for x in range(ITERATIONSFIRSTSHRINKWRAP):
       
