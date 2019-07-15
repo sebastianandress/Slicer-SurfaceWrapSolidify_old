@@ -268,6 +268,7 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
       self.setCurrentSegmentTransparent()
 
     r,g,b = segmentationNode.GetSegmentation().GetSegment(segmentID).GetColor()
+    vol = slicer.util.getNode('13: Unnamed Series')
 
     # Set values to pipelines
     for sliceWidget in self.previewPipelines:
@@ -275,8 +276,18 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
       pipeline.lookupTable.SetTableValue(1,  r, g, b,  opacity)
       sliceLogic = sliceWidget.sliceLogic()
       backgroundLogic = sliceLogic.GetBackgroundLayer()
-      pipeline.thresholdFilter.SetInputConnection(backgroundLogic.GetReslice().GetOutputPort())
-      pipeline.thresholdFilter.ThresholdBetween(min, max)
+      
+      #pipeline.thresholdFilter.ThresholdBetween(min, max)
+      ##slice here
+      #sliceNode = sliceWidget.mrmlSliceNode()
+      reslice = vtk.vtkImageReslice()
+      reslice.SetInputConnection(vol.GetImageDataConnection())
+      reslice.SetOutputDimensionality(2)
+      reslice.SetInterpolationModeToLinear()
+      #reslice.SetResliceAxes(sliceNode.GetSliceToRAS())
+      reslice.SetResliceTransform(backgroundLogic.GetReslice().GetResliceTransform())
+      
+      pipeline.colorMapper.SetInputConnection(reslice.GetOutputPort())
       pipeline.actor.VisibilityOn()
       sliceWidget.sliceView().scheduleRender()
 
@@ -951,6 +962,6 @@ class PreviewPipeline(object):
     self.mapper.SetColorLevel(128)
 
     # Setup pipeline
-    self.colorMapper.SetInputConnection(self.thresholdFilter.GetOutputPort())
+    #self.colorMapper.SetInputConnection(self.thresholdFilter.GetOutputPort())
     self.mapper.SetInputConnection(self.colorMapper.GetOutputPort())
 
