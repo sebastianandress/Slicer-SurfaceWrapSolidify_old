@@ -14,6 +14,7 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
     self.segment2DFillOpacity = None
     self.segment2DOutlineOpacity = None
     self.previewedSegmentID = None
+    self.filteredImageData = None
 
     self.timer = qt.QTimer()
     self.previewState = 0
@@ -23,6 +24,9 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
 
     self.previewPipelines = {}
     self.setupPreviewDisplay()
+
+    self.logic = SRSFilterLogic(scriptedEffect)
+    self.logic.logCallback = self.addLog
 
   def clone(self):
     # It should not be necessary to modify this method
@@ -50,6 +54,7 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
     # Clear preview pipeline and stop timer
     self.clearPreviewDisplay()
     self.timer.stop()
+    self.filteredOrientedImageData = None
 
   def setCurrentSegmentTransparent(self):
     """Save current segment opacity and set it to zero
@@ -127,19 +132,6 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
     # Turn off effect-specific cursor for this effect
     return slicer.util.mainWindow().cursor
 
-  def masterVolumeNodeChanged(self):
-    # Set scalar range of master volume image data to threshold slider
-    import vtkSegmentationCorePython as vtkSegmentationCore
-    masterImageData = self.scriptedEffect.masterVolumeImageData()
-    if masterImageData:
-      lo, hi = masterImageData.GetScalarRange()
-      self.thresholdSlider.setRange(lo, hi)
-      self.thresholdSlider.singleStep = (hi - lo) / 1000.
-      if (self.scriptedEffect.doubleParameter("MinimumThreshold") == self.scriptedEffect.doubleParameter("MaximumThreshold")):
-        # has not been initialized yet
-        self.scriptedEffect.setParameter("MinimumThreshold", lo+(hi-lo)*0.25)
-        self.scriptedEffect.setParameter("MaximumThreshold", hi)
-
   def layoutChanged(self):
     self.setupPreviewDisplay()
 
@@ -168,52 +160,81 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
   #
   # Effect specific methods (the above ones are the API methods to override)
   #
+
+
   def onThresholdValuesChanged(self,min,max):
     self.scriptedEffect.updateMRMLFromGUI()
 
   def onUpdatePreview(self):
     self.setCurrentSegmentTransparent()
 
-    # Update intensity range
-    self.masterVolumeNodeChanged()
+    # run SRS-Filter
+    self.createFilteredImageData()
 
     # Setup and start preview pulse
     self.setupPreviewDisplay()
     self.timer.start(200)
 
   def onApply(self):
-    try:
-      # Get master volume image data
-      import vtkSegmentationCorePython as vtkSegmentationCore
-      masterImageData = self.scriptedEffect.masterVolumeImageData()
-      # Get modifier labelmap
-      modifierLabelmap = self.scriptedEffect.defaultModifierLabelmap()
-      originalImageToWorldMatrix = vtk.vtkMatrix4x4()
-      modifierLabelmap.GetImageToWorldMatrix(originalImageToWorldMatrix)
-      # Get parameters
-      min = self.scriptedEffect.doubleParameter("MinimumThreshold")
-      max = self.scriptedEffect.doubleParameter("MaximumThreshold")
 
-      self.scriptedEffect.saveStateForUndo()
-
-      # Perform thresholding
-      thresh = vtk.vtkImageThreshold()
-      thresh.SetInputData(masterImageData)
-      thresh.ThresholdBetween(min, max)
-      thresh.SetInValue(1)
-      thresh.SetOutValue(0)
-      thresh.SetOutputScalarType(modifierLabelmap.GetScalarType())
-      thresh.Update()
-      modifierLabelmap.DeepCopy(thresh.GetOutput())
-    except IndexError:
-      logging.error('apply: Failed to threshold master volume!')
-      pass
+    self.scriptedEffect.saveStateForUndo()
 
     # Apply changes
-    self.scriptedEffect.modifySelectedSegmentByLabelmap(modifierLabelmap, slicer.qSlicerSegmentEditorAbstractEffect.ModificationModeSet)
+    self.scriptedEffect.modifySelectedSegmentByLabelmap(self.filteredOrientedImageData, slicer.qSlicerSegmentEditorAbstractEffect.ModificationModeSet)
 
     # De-select effect
     self.scriptedEffect.selectEffect("")
+
+  def createFilteredImageData(self):
+    
+    # selectedSegmentLabelmap = self.scriptedEffect.selectedSegmentLabelmap()
+    # segmentationNode = self.scriptedEffect.parameterSetNode().GetSegmentationNode()
+    # selectedSegmentID = self.scriptedEffect.parameterSetNode().GetSelectedSegmentID()
+    # #modifierLabelmap = self.scriptedEffect.defaultModifierLabelmap()
+    
+    # # filter
+    # thresh = vtk.vtkImageThreshold()
+    # thresh.SetInputData(selectedSegmentLabelmap)
+    # thresh.ThresholdBetween(1,1)
+    # thresh.SetInValue(1)
+    # thresh.SetOutValue(0)
+    # #thresh.SetOutputScalarType(masterImageData.GetScalarType())
+    # thresh.Update()
+
+    # #self.logic.srsFilter(inputImageData, self.filteredImageData)
+
+    # # transform
+    # import vtkSegmentationCorePython as vtkSegmentationCore
+    # self.filteredOrientedImageData = vtkSegmentationCore.vtkOrientedImageData()
+    # self.filteredOrientedImageData.DeepCopy(thresh.GetOutput())
+    # selectedSegmentLabelmapImageToWorldMatrix = vtk.vtkMatrix4x4()
+    # selectedSegmentLabelmap.GetImageToWorldMatrix(selectedSegmentLabelmapImageToWorldMatrix)
+    # self.filteredOrientedImageData.SetImageToWorldMatrix(selectedSegmentLabelmapImageToWorldMatrix)
+    
+    # self.scriptedEffect.modifySelectedSegmentByLabelmap(self.filteredOrientedImageData, slicer.qSlicerSegmentEditorAbstractEffect.ModificationModeSet)
+    
+    
+    # # selectedSegmentIndex = segmentationNode.GetSegmentation().GetSegmentIndex(selectedSegmentID)
+    # # selectedSegmentName = segmentationNode.GetSegmentation().GetSegment(selectedSegmentID).GetName()
+    # # slicer.vtkSlicerSegmentationsModuleLogic.ImportLabelmapToSegmentationNode(self.filteredOrientedImageData, segmentationNode, selectedSegmentName+" -", selectedSegmentID )
+
+    # Get master volume image data
+    import vtkSegmentationCorePython
+
+    # Get modifier labelmap
+    self.filteredOrientedImageData = self.scriptedEffect.defaultModifierLabelmap()
+    selectedSegmentLabelmap = self.scriptedEffect.selectedSegmentLabelmap()
+
+    thresh = vtk.vtkImageThreshold()
+    thresh.SetInputData(selectedSegmentLabelmap)
+    thresh.ThresholdBetween(1,1)
+    thresh.SetInValue(0)
+    thresh.SetOutValue(1)
+    thresh.SetOutputScalarType(vtk.VTK_UNSIGNED_CHAR)
+    thresh.Update()
+
+    self.filteredOrientedImageData.DeepCopy(thresh.GetOutput())
+    
 
   def clearPreviewDisplay(self):
     for sliceWidget, pipeline in self.previewPipelines.items():
@@ -248,9 +269,13 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
   def preview(self):
     """Set values to pipeline"""
 
+    import vtkSegmentationCorePython
+
     opacity = 0.5 + self.previewState / (2. * self.previewSteps)
-    min = self.scriptedEffect.doubleParameter("MinimumThreshold")
-    max = self.scriptedEffect.doubleParameter("MaximumThreshold")
+    
+    if self.filteredOrientedImageData is None:
+      logging.error('SRS-Filter not applied yet.')
+      return
 
     # Get color of edited segment
     segmentationNode = self.scriptedEffect.parameterSetNode().GetSegmentationNode()
@@ -268,7 +293,10 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
       self.setCurrentSegmentTransparent()
 
     r,g,b = segmentationNode.GetSegmentation().GetSegment(segmentID).GetColor()
-    vol = slicer.util.getNode('13: Unnamed Series')
+
+    img = vtkSegmentationCorePython.vtkOrientedImageData()
+    img.DeepCopy(self.filteredOrientedImageData)
+    img.SetImageToWorldMatrix(vtk.vtkMatrix4x4())
 
     # Set values to pipelines
     for sliceWidget in self.previewPipelines:
@@ -281,10 +309,9 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
       ##slice here
       #sliceNode = sliceWidget.mrmlSliceNode()
       reslice = vtk.vtkImageReslice()
-      reslice.SetInputConnection(vol.GetImageDataConnection())
+      reslice.SetInputData(img)
       reslice.SetOutputDimensionality(2)
       reslice.SetInterpolationModeToLinear()
-      #reslice.SetResliceAxes(sliceNode.GetSliceToRAS())
       reslice.SetResliceTransform(backgroundLogic.GetReslice().GetResliceTransform())
       
       pipeline.colorMapper.SetInputConnection(reslice.GetOutputPort())
@@ -296,6 +323,11 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
       self.previewStep = -1
     if self.previewState <= 0:
       self.previewStep = 1
+
+
+  def addLog(self, text):
+    slicer.util.showStatusMessage(text)
+    slicer.app.processEvents() # force update
 
 
 
