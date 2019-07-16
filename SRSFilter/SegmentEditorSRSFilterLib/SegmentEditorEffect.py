@@ -59,20 +59,20 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
     # filter modes
     self.filterModeTypeMap = {}
     self.filterModes = []
-    self.testModelButton = None
-    self.filterModes.append({'button':self.testModelButton, 'name':'Test Model', 'id':'TEST', 'default':False})
+    # self.testModelButton = None
+    # self.filterModes.append({'button':self.testModelButton, 'name':'Test Model', 'id':'TEST', 'default':False, 'output':'model'})
     self.surfaceButton = None
-    self.filterModes.append({'button':self.surfaceButton, 'name':'Surface', 'id':'SURFACE', 'default':False})
+    self.filterModes.append({'button':self.surfaceButton, 'name':'Surface', 'id':'SURFACE', 'default':True, 'output':'image'})
     self.hullShallowButton = None
-    self.filterModes.append({'button':self.hullShallowButton, 'name':'Hull Shallow', 'id':'SHALLOW','default':True})
+    self.filterModes.append({'button':self.hullShallowButton, 'name':'Hull Shallow', 'id':'SHALLOW','default':False, 'output':'image'})
     self.raycastResultButton = None
-    self.filterModes.append({'button':self.raycastResultButton, 'name':'Raycast Result', 'id':'RAYCAST','default':False})
+    self.filterModes.append({'button':self.raycastResultButton, 'name':'Raycast Result', 'id':'RAYCAST','default':False, 'output':'image'})
     self.hullDeepButton = None
-    self.filterModes.append({'button':self.hullDeepButton, 'name':'Hull Deep', 'id':'DEEP','default':False})
+    self.filterModes.append({'button':self.hullDeepButton, 'name':'Hull Deep', 'id':'DEEP','default':False, 'output':'image'})
     self.nonmanifoldModelButton = None
-    self.filterModes.append({'button':self.nonmanifoldModelButton, 'name':'Solid Model', 'id':'NONSOLID','default':False})
+    self.filterModes.append({'button':self.nonmanifoldModelButton, 'name':'Solid Model', 'id':'NONSOLID','default':False, 'output':'model'})
     self.manifoldModelButton = None
-    self.filterModes.append({'button':self.manifoldModelButton, 'name':'Non-Manifold Model', 'id':'SOLID','default':False})
+    self.filterModes.append({'button':self.manifoldModelButton, 'name':'Non-Manifold Model', 'id':'SOLID','default':False, 'output':'model'})
 
   def clone(self):
     # It should not be necessary to modify this method
@@ -95,6 +95,9 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
     pass
 
   def deactivate(self):
+    self.cleanup()
+  
+  def cleanup(self):
     self.restorePreviewedSegmentTransparency()
 
     # Clear preview pipeline and stop timer
@@ -152,18 +155,18 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
 
   def setupOptionsFrame(self):
     
-    self.updatePreviewButton = qt.QPushButton("Update Preview")
-    self.updatePreviewButton.objectName = self.__class__.__name__ + 'Update Preview'
-    self.updatePreviewButton.setToolTip("Fill selected segment in regions that are in the specified intensity range.")
-    self.scriptedEffect.addOptionsWidget(self.updatePreviewButton)
+    # self.updatePreviewButton = qt.QPushButton("Update Preview")
+    # self.updatePreviewButton.objectName = self.__class__.__name__ + 'Update Preview'
+    # self.updatePreviewButton.setToolTip("Fill selected segment in regions that are in the specified intensity range.")
+    # self.scriptedEffect.addOptionsWidget(self.updatePreviewButton)
 
-    self.applyButton = qt.QPushButton("Apply")
+    self.applyButton = qt.QPushButton("Preview")
     self.applyButton.objectName = self.__class__.__name__ + 'Apply'
-    self.applyButton.setToolTip("Fill selected segment in regions that are in the specified intensity range.")
+    self.applyButton.setToolTip("")
     self.scriptedEffect.addOptionsWidget(self.applyButton)
 
     self.applyButton.connect('clicked()', self.onApply)
-    self.updatePreviewButton.connect('clicked()', self.onUpdatePreview)
+    #self.updatePreviewButton.connect('clicked()', self.onUpdatePreview)
 
     # setup parameters
     for param in self.parameters:
@@ -230,6 +233,10 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
     filterModeButton = list(self.filterModeTypeMap.keys())[list(self.filterModeTypeMap.values()).index(filterModeName)]
     filterModeButton.setChecked(True)
 
+    self.cleanup()
+    self.updateApplyButton()
+    
+
   def updateMRMLFromGUI(self):
     for param in self.parameters:
       self.scriptedEffect.setParameter(param['id'], param['slider'].value)
@@ -237,36 +244,45 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
     for button in self.filterModeTypeMap:
       if button.isChecked():
         self.scriptedEffect.setParameter("Filtermode", self.filterModeTypeMap[button])
+    
+    self.cleanup()
+    self.updateApplyButton()
   
 
   #
   # Effect specific methods (the above ones are the API methods to override)
   #
 
-  def onUpdatePreview(self):
-
-    # run SRS-Filter
-    self.createFilteredImageData()
-
-    # Setup and start preview pulse
-    self.setCurrentSegmentTransparent()
-    self.setupPreviewDisplay()
-    self.timer.start(200)
+  def updateApplyButton(self):
+    filterModeName = self.scriptedEffect.parameter("Filtermode")
+    if filterModeName in [item['id'] for item in self.filterModes if item['output'] == 'model'] or self.filteredOrientedImageData:
+      self.applyButton.text = 'Apply'
+    else:
+      self.applyButton.text = 'Preview'
 
   def onApply(self):
 
     self.scriptedEffect.saveStateForUndo()
 
-    # Apply changes
-    #TODO: check if self.filteredOrientedImageData is empty
+    filterModeName = self.scriptedEffect.parameter("Filtermode")
+    if filterModeName in [item['id'] for item in self.filterModes if item['output'] == 'model']:
+      self.applyFilter()
+      self.cleanup()
+    
+    elif self.filteredOrientedImageData:
+      self.scriptedEffect.modifySelectedSegmentByLabelmap(self.filteredOrientedImageData, slicer.qSlicerSegmentEditorAbstractEffect.ModificationModeSet)
+      self.cleanup()
+    
+    else:
+      self.applyFilter()
+      self.setCurrentSegmentTransparent()
+      self.setupPreviewDisplay()
+      self.timer.start(200)
+    
+    self.updateApplyButton()
 
-    self.scriptedEffect.modifySelectedSegmentByLabelmap(self.filteredOrientedImageData, slicer.qSlicerSegmentEditorAbstractEffect.ModificationModeSet)
-    self.filteredOrientedImageData = None
 
-    # De-select effect
-    self.scriptedEffect.selectEffect("")
-
-  def createFilteredImageData(self):
+  def applyFilter(self):
     
     qt.QApplication.setOverrideCursor(qt.Qt.WaitCursor)
     self.addLog('Filtering process started...')
@@ -278,12 +294,12 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
     #TODO: check if segment is not empty
 
     self.logic.srsFilter(self.scriptedEffect.selectedSegmentLabelmap(), self.filteredOrientedImageData)
-    #self.logic.srsFilter(self.scriptedEffect.defaultModifierLabelmap(), self.filteredOrientedImageData)
 
     self.addLog('')
     qt.QApplication.restoreOverrideCursor()
+
+    self.updateApplyButton()
     
-    #self.filteredOrientedImageData.DeepCopy(thresh.GetOutput())
     
 
   def clearPreviewDisplay(self):
@@ -524,7 +540,7 @@ class SRSFilterLogic(object):
     threshold = vtk.vtkImageThreshold()
     
     # Workaround till Slicer 5 release
-    if FILTERMODE in ('TEST', 'MANIFOLD', 'NONMANIFOLD') and type(inputImageData) == vtkSegmentationCorePython.vtkOrientedImageData:
+    if FILTERMODE in ('TEST', 'SOLID', 'NONSOLID') and type(inputImageData) == vtkSegmentationCorePython.vtkOrientedImageData:
       self.transformMatrix = vtk.vtkMatrix4x4()
       newInputImageData = vtkSegmentationCorePython.vtkOrientedImageData()
       newInputImageData.DeepCopy(inputImageData)
