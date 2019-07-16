@@ -58,6 +58,8 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
     # filter modes
     self.filterModeTypeMap = {}
     self.filterModes = []
+    self.testModelButton = None
+    self.filterModes.append({'button':self.testModelButton, 'name':'Test Model', 'id':'TEST', 'default':False})
     self.surfaceButton = None
     self.filterModes.append({'button':self.surfaceButton, 'name':'Surface', 'id':'SURFACE', 'default':False})
     self.hullShallowButton = None
@@ -353,15 +355,16 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
       sliceLogic = sliceWidget.sliceLogic()
       backgroundLogic = sliceLogic.GetBackgroundLayer()
       
-      #pipeline.thresholdFilter.ThresholdBetween(min, max)
       ##slice here
-      #sliceNode = sliceWidget.mrmlSliceNode()
       reslice = vtk.vtkImageReslice()
       reslice.SetInputData(img)
       reslice.SetOutputDimensionality(2)
       reslice.SetInterpolationModeToLinear()
       reslice.SetResliceTransform(backgroundLogic.GetReslice().GetResliceTransform())
-      
+      reslice.SetOutputExtent(backgroundLogic.GetReslice().GetOutputExtent())
+      reslice.SetOutputOrigin(backgroundLogic.GetReslice().GetOutputOrigin())
+      #reslice.SetOutputSpacing(backgroundLogic.GetReslice().GetOutputSpacing())
+
       pipeline.colorMapper.SetInputConnection(reslice.GetOutputPort())
       pipeline.actor.VisibilityOn()
       sliceWidget.sliceView().scheduleRender()
@@ -512,6 +515,16 @@ class SRSFilterLogic(object):
     inputDiscreteCubes.SetInputData(threshold.GetOutput())
     inputDiscreteCubes.GenerateValues(1,0,0)
     inputDiscreteCubes.Update()
+
+    if FILTERMODE == 'TEST':
+      modelsLogic = slicer.modules.models.logic()
+      modelNode = modelsLogic.AddModel(inputDiscreteCubes.GetOutput())
+      seg = self.scriptedEffect.parameterSetNode().GetSegmentationNode().GetSegmentation().GetSegment(self.scriptedEffect.parameterSetNode().GetSelectedSegmentID())
+      modelNode.GetDisplayNode().SetColor(seg.GetColor())
+      modelNode.SetName(seg.GetName())
+      outputImageData.DeepCopy(inputImageData)
+      
+      return modelNode
 
     #region create sphere
     bounds = np.array([0]*6)
