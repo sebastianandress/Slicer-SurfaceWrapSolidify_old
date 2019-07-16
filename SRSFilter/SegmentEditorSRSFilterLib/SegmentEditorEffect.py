@@ -59,9 +59,9 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
     self.filterModeTypeMap = {}
     self.filterModes = []
     self.surfaceButton = None
-    self.filterModes.append({'button':self.surfaceButton, 'name':'Surface', 'id':'SURFACE', 'default':True})
+    self.filterModes.append({'button':self.surfaceButton, 'name':'Surface', 'id':'SURFACE', 'default':False})
     self.hullShallowButton = None
-    self.filterModes.append({'button':self.hullShallowButton, 'name':'Hull Shallow', 'id':'SHALLOW','default':False})
+    self.filterModes.append({'button':self.hullShallowButton, 'name':'Hull Shallow', 'id':'SHALLOW','default':True})
     self.raycastResultButton = None
     self.filterModes.append({'button':self.raycastResultButton, 'name':'Raycast Result', 'id':'RAYCAST','default':False})
     self.hullDeepButton = None
@@ -269,13 +269,14 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
 
     # Get master volume image data
     import vtkSegmentationCorePython
-
-    # Get modifier labelmap
+    
+    self.filteredOrientedImageData = vtkSegmentationCorePython.vtkOrientedImageData()
     selectedSegmentLabelmap = self.scriptedEffect.selectedSegmentLabelmap()
 
     #TODO: check if segment is not empty
 
-    self.logic.srsFilter(self.scriptedEffect.defaultModifierLabelmap(), self.filteredOrientedImageData)
+    self.logic.srsFilter(self.scriptedEffect.selectedSegmentLabelmap(), self.filteredOrientedImageData)
+    #self.logic.srsFilter(self.scriptedEffect.defaultModifierLabelmap(), self.filteredOrientedImageData)
 
     slicer.util.showStatusMessage('')
     qt.QApplication.restoreOverrideCursor()
@@ -376,6 +377,39 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
     slicer.util.showStatusMessage(text)
     slicer.app.processEvents() # force update
 
+#
+# PreviewPipeline
+#
+class PreviewPipeline(object):
+  """ Visualization objects and pipeline for each slice view for threshold preview
+  """
+
+  def __init__(self):
+    self.lookupTable = vtk.vtkLookupTable()
+    self.lookupTable.SetRampToLinear()
+    self.lookupTable.SetNumberOfTableValues(2)
+    self.lookupTable.SetTableRange(0, 1)
+    self.lookupTable.SetTableValue(0,  0, 0, 0,  0)
+    self.colorMapper = vtk.vtkImageMapToRGBA()
+    self.colorMapper.SetOutputFormatToRGBA()
+    self.colorMapper.SetLookupTable(self.lookupTable)
+
+    # Feedback actor
+    self.mapper = vtk.vtkImageMapper()
+    self.dummyImage = vtk.vtkImageData()
+    self.dummyImage.AllocateScalars(vtk.VTK_UNSIGNED_INT, 1)
+    self.mapper.SetInputData(self.dummyImage)
+    self.actor = vtk.vtkActor2D()
+    self.actor.VisibilityOff()
+    self.actor.SetMapper(self.mapper)
+    self.mapper.SetColorWindow(255)
+    self.mapper.SetColorLevel(128)
+
+    # Setup pipeline
+    #self.colorMapper.SetInputConnection(self.thresholdFilter.GetOutputPort())
+    self.mapper.SetInputConnection(self.colorMapper.GetOutputPort())
+
+
 
 
 class SRSFilterLogic(object):
@@ -385,6 +419,32 @@ class SRSFilterLogic(object):
     self.logCallback = None
 
   def srsFilter(self, inputImageData, outputImageData):
+
+    OFFSETFIRSTSHRINKWRAP = self.scriptedEffect.doubleParameter('OffsetFirstShrinkwrap')
+    SPACINGFIRSTREMESH = self.scriptedEffect.doubleParameter('SpacingFirstRemesh')
+    ITERATIONSFIRSTSHRINKWRAP = int(self.scriptedEffect.doubleParameter('IterationsFirstShrinkwrap'))
+    ITERATIONSSECONDSHRINKWRAP = int(self.scriptedEffect.doubleParameter('IterationsSecondShrinkwrap'))
+    RAYCASTSEARCHEDGELENGTH = self.scriptedEffect.doubleParameter('RaycastSearchEdgeLength')
+    RAYCASTOUTPUTEDGELENGTH = self.scriptedEffect.doubleParameter('RaycastOutputEdgeLength')
+    RAYCASTMAXHITDISTANCE = self.scriptedEffect.doubleParameter('RaycastMaxHitDistance')
+    RAYCASTMAXLENGTH = self.scriptedEffect.doubleParameter('RaycastMaxLength')
+    RAYCASTMINLENGTH = self.scriptedEffect.doubleParameter('RaycastMinLength')
+    MAXMODELSDISTANCE = self.scriptedEffect.doubleParameter('MaxModelsDistance')
+    THICKNESS = self.scriptedEffect.doubleParameter('SolidificationThickness')
+    FILTERMODE = self.scriptedEffect.parameter('Filtermode')
+
+    # OFFSETFIRSTSHRINKWRAP = 15# self.scriptedEffect.doubleParameter('OffsetFirstShrinkwrap')
+    # SPACINGFIRSTREMESH = 10#self.scriptedEffect.doubleParameter('SpacingFirstRemesh')
+    # ITERATIONSFIRSTSHRINKWRAP = 3#int(self.scriptedEffect.doubleParameter('IterationsFirstShrinkwrap'))
+    # ITERATIONSSECONDSHRINKWRAP = 5#int(self.scriptedEffect.doubleParameter('IterationsSecondShrinkwrap'))
+    # RAYCASTSEARCHEDGELENGTH = 20#self.scriptedEffect.doubleParameter('RaycastSearchEdgeLength')
+    # RAYCASTOUTPUTEDGELENGTH = 2#self.scriptedEffect.doubleParameter('RaycastOutputEdgeLength')
+    # RAYCASTMAXHITDISTANCE = 2#self.scriptedEffect.doubleParameter('RaycastMaxHitDistance')
+    # RAYCASTMAXLENGTH = 100#self.scriptedEffect.doubleParameter('RaycastMaxLength')
+    # RAYCASTMINLENGTH = 0#self.scriptedEffect.doubleParameter('RaycastMinLength')
+    # MAXMODELSDISTANCE = 0.5#elf.scriptedEffect.doubleParameter('MaxModelsDistance')
+    # THICKNESS = 1.5#self.scriptedEffect.doubleParameter('SolidificationThickness')
+    # FILTERMODE = 'SHALLOW'#self.scriptedEffect.parameter('Filtermode')
 
     def polydataToImagedata(polydata):
 
@@ -436,32 +496,6 @@ class SRSFilterLogic(object):
       smootherSinc.Update()
 
       return smootherSinc.GetOutput()
-
-    OFFSETFIRSTSHRINKWRAP = self.scriptedEffect.doubleParameter('OffsetFirstShrinkwrap')
-    SPACINGFIRSTREMESH = self.scriptedEffect.doubleParameter('SpacingFirstRemesh')
-    ITERATIONSFIRSTSHRINKWRAP = int(self.scriptedEffect.doubleParameter('IterationsFirstShrinkwrap'))
-    ITERATIONSSECONDSHRINKWRAP = int(self.scriptedEffect.doubleParameter('IterationsSecondShrinkwrap'))
-    RAYCASTSEARCHEDGELENGTH = self.scriptedEffect.doubleParameter('RaycastSearchEdgeLength')
-    RAYCASTOUTPUTEDGELENGTH = self.scriptedEffect.doubleParameter('RaycastOutputEdgeLength')
-    RAYCASTMAXHITDISTANCE = self.scriptedEffect.doubleParameter('RaycastMaxHitDistance')
-    RAYCASTMAXLENGTH = self.scriptedEffect.doubleParameter('RaycastMaxLength')
-    RAYCASTMINLENGTH = self.scriptedEffect.doubleParameter('RaycastMinLength')
-    MAXMODELSDISTANCE = self.scriptedEffect.doubleParameter('MaxModelsDistance')
-    THICKNESS = self.scriptedEffect.doubleParameter('SolidificationThickness')
-    FILTERMODE = self.scriptedEffect.parameter('Filtermode')
-
-    # OFFSETFIRSTSHRINKWRAP = 15# self.scriptedEffect.doubleParameter('OffsetFirstShrinkwrap')
-    # SPACINGFIRSTREMESH = 10#self.scriptedEffect.doubleParameter('SpacingFirstRemesh')
-    # ITERATIONSFIRSTSHRINKWRAP = 3#int(self.scriptedEffect.doubleParameter('IterationsFirstShrinkwrap'))
-    # ITERATIONSSECONDSHRINKWRAP = 5#int(self.scriptedEffect.doubleParameter('IterationsSecondShrinkwrap'))
-    # RAYCASTSEARCHEDGELENGTH = 20#self.scriptedEffect.doubleParameter('RaycastSearchEdgeLength')
-    # RAYCASTOUTPUTEDGELENGTH = 2#self.scriptedEffect.doubleParameter('RaycastOutputEdgeLength')
-    # RAYCASTMAXHITDISTANCE = 2#self.scriptedEffect.doubleParameter('RaycastMaxHitDistance')
-    # RAYCASTMAXLENGTH = 100#self.scriptedEffect.doubleParameter('RaycastMaxLength')
-    # RAYCASTMINLENGTH = 0#self.scriptedEffect.doubleParameter('RaycastMinLength')
-    # MAXMODELSDISTANCE = 0.5#elf.scriptedEffect.doubleParameter('MaxModelsDistance')
-    # THICKNESS = 1.5#self.scriptedEffect.doubleParameter('SolidificationThickness')
-    # FILTERMODE = 'SHALLOW'#self.scriptedEffect.parameter('Filtermode')
 
 
     # create model from segmentation
@@ -879,7 +913,7 @@ class SRSFilterLogic(object):
       modelNode.SetName(seg.GetName())
       outputImageData.DeepCopy(inputImageData)
       
-      return outputImageData
+      return modelNode
 
     #endregion
 
@@ -1015,45 +1049,10 @@ class SRSFilterLogic(object):
       modelNode.SetName(seg.GetName())
       outputImageData.DeepCopy(inputImageData)
       
-      return outputImageData
+      return modelNode
 
     return polydataToImagedata(shrinkModelPD)
     #endregion
       
 
-#
-# PreviewPipeline
-#
-class PreviewPipeline(object):
-  """ Visualization objects and pipeline for each slice view for threshold preview
-  """
-
-  def __init__(self):
-    self.lookupTable = vtk.vtkLookupTable()
-    self.lookupTable.SetRampToLinear()
-    self.lookupTable.SetNumberOfTableValues(2)
-    self.lookupTable.SetTableRange(0, 1)
-    self.lookupTable.SetTableValue(0,  0, 0, 0,  0)
-    self.colorMapper = vtk.vtkImageMapToRGBA()
-    self.colorMapper.SetOutputFormatToRGBA()
-    self.colorMapper.SetLookupTable(self.lookupTable)
-    self.thresholdFilter = vtk.vtkImageThreshold()
-    self.thresholdFilter.SetInValue(1)
-    self.thresholdFilter.SetOutValue(0)
-    self.thresholdFilter.SetOutputScalarTypeToUnsignedChar()
-
-    # Feedback actor
-    self.mapper = vtk.vtkImageMapper()
-    self.dummyImage = vtk.vtkImageData()
-    self.dummyImage.AllocateScalars(vtk.VTK_UNSIGNED_INT, 1)
-    self.mapper.SetInputData(self.dummyImage)
-    self.actor = vtk.vtkActor2D()
-    self.actor.VisibilityOff()
-    self.actor.SetMapper(self.mapper)
-    self.mapper.SetColorWindow(255)
-    self.mapper.SetColorLevel(128)
-
-    # Setup pipeline
-    #self.colorMapper.SetInputConnection(self.thresholdFilter.GetOutputPort())
-    self.mapper.SetInputConnection(self.colorMapper.GetOutputPort())
 
