@@ -498,11 +498,10 @@ class SRSFilterLogic(object):
 
       modelsLogic = slicer.modules.models.logic()
 
-      if type(inputImageData) == vtkSegmentationCorePython.vtkOrientedImageData:
+      if self.transformMatrix:
         mat = vtk.vtkMatrix4x4()
-        inputImageData.GetImageToWorldMatrix(mat)
         transform = vtk.vtkTransform()
-        transform.SetMatrix(mat)
+        transform.SetMatrix(self.transformMatrix)
 
         transformFilter=vtk.vtkTransformPolyDataFilter()
         transformFilter.SetTransform(transform)
@@ -521,36 +520,22 @@ class SRSFilterLogic(object):
       outputImageData.DeepCopy(inputImageData)
       return modelNode
 
-        
-
-      
-    
-    def smoothPolydata(polydata):
-      decimator = vtk.vtkDecimatePro()
-      decimator.SetInputData(polydata)
-      decimator.SetFeatureAngle(60)
-      decimator.SplittingOff()
-      decimator.PreserveTopologyOn()
-      decimator.SetMaximumError(1)
-      decimator.SetTargetReduction(0.25)
-      decimator.ReleaseDataFlagOff()
-      decimator.Update()
-
-      smootherSinc = vtk.vtkWindowedSincPolyDataFilter()
-      smootherSinc.SetPassBand(0.1)
-      smootherSinc.SetInputConnection(decimator.GetOutputPort())
-      smootherSinc.SetNumberOfIterations(10)
-      smootherSinc.FeatureEdgeSmoothingOff()
-      smootherSinc.BoundarySmoothingOff()
-      smootherSinc.ReleaseDataFlagOn()
-      smootherSinc.Update()
-
-      return smootherSinc.GetOutput()
-
-
     # create model from segmentation
     threshold = vtk.vtkImageThreshold()
-    threshold.SetInputData(inputImageData)
+    
+    # Workaround till Slicer 5 release
+    if FILTERMODE in ('TEST', 'MANIFOLD', 'NONMANIFOLD') and type(inputImageData) == vtkSegmentationCorePython.vtkOrientedImageData:
+      self.transformMatrix = vtk.vtkMatrix4x4()
+      newInputImageData = vtkSegmentationCorePython.vtkOrientedImageData()
+      newInputImageData.DeepCopy(inputImageData)
+      newInputImageData.GetImageToWorldMatrix(self.transformMatrix)
+      newInputImageData.SetImageToWorldMatrix(vtk.vtkMatrix4x4())
+      threshold.SetInputData(newInputImageData)
+
+    else:
+      self.transformMatrix = None
+      threshold.SetInputData(inputImageData)
+
     threshold.ThresholdBetween(0,0)
     threshold.ReplaceOutOn()
     threshold.ReplaceInOn()
