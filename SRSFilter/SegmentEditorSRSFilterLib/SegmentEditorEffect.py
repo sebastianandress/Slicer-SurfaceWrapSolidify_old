@@ -4,6 +4,7 @@ import logging
 from SegmentEditorEffects import *
 import numpy as np
 import math
+import vtkSegmentationCorePython
 
 class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
   """This effect uses Watershed algorithm to partition the input volume"""
@@ -16,7 +17,7 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
     self.segment2DFillOpacity = None
     self.segment2DOutlineOpacity = None
     self.previewedSegmentID = None
-    self.filteredImageData = None
+    self.filteredOrientedImageData = None
 
     self.timer = qt.QTimer()
     self.previewState = 0
@@ -257,7 +258,7 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
     self.scriptedEffect.saveStateForUndo()
 
     # Apply changes
-    # check if self.filteredOrientedImageData is empty
+    #TODO: check if self.filteredOrientedImageData is empty
 
     self.scriptedEffect.modifySelectedSegmentByLabelmap(self.filteredOrientedImageData, slicer.qSlicerSegmentEditorAbstractEffect.ModificationModeSet)
     self.filteredOrientedImageData = None
@@ -268,10 +269,9 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
   def createFilteredImageData(self):
     
     qt.QApplication.setOverrideCursor(qt.Qt.WaitCursor)
+    self.addLog('Filtering process started...')
 
     # Get master volume image data
-    import vtkSegmentationCorePython
-    
     self.filteredOrientedImageData = vtkSegmentationCorePython.vtkOrientedImageData()
     selectedSegmentLabelmap = self.scriptedEffect.selectedSegmentLabelmap()
 
@@ -280,7 +280,7 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
     self.logic.srsFilter(self.scriptedEffect.selectedSegmentLabelmap(), self.filteredOrientedImageData)
     #self.logic.srsFilter(self.scriptedEffect.defaultModifierLabelmap(), self.filteredOrientedImageData)
 
-    slicer.util.showStatusMessage('')
+    self.addLog('')
     qt.QApplication.restoreOverrideCursor()
     
     #self.filteredOrientedImageData.DeepCopy(thresh.GetOutput())
@@ -318,8 +318,6 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
 
   def preview(self):
     """Set values to pipeline"""
-
-    import vtkSegmentationCorePython
 
     opacity = 0.5 + self.previewState / (2. * self.previewSteps)
     
@@ -478,6 +476,55 @@ class SRSFilterLogic(object):
       
       return outputImageData
 
+    def addModel(polydata):
+      decimator = vtk.vtkDecimatePro()
+      decimator.SetInputData(polydata)
+      decimator.SetFeatureAngle(60)
+      decimator.SplittingOff()
+      decimator.PreserveTopologyOn()
+      decimator.SetMaximumError(1)
+      decimator.SetTargetReduction(0.25)
+      decimator.ReleaseDataFlagOff()
+      decimator.Update()
+
+      smootherSinc = vtk.vtkWindowedSincPolyDataFilter()
+      smootherSinc.SetPassBand(0.1)
+      smootherSinc.SetInputConnection(decimator.GetOutputPort())
+      smootherSinc.SetNumberOfIterations(10)
+      smootherSinc.FeatureEdgeSmoothingOff()
+      smootherSinc.BoundarySmoothingOff()
+      smootherSinc.ReleaseDataFlagOn()
+      smootherSinc.Update()
+
+      modelsLogic = slicer.modules.models.logic()
+
+      if type(inputImageData) == vtkSegmentationCorePython.vtkOrientedImageData:
+        mat = vtk.vtkMatrix4x4()
+        inputImageData.GetImageToWorldMatrix(mat)
+        transform = vtk.vtkTransform()
+        transform.SetMatrix(mat)
+
+        transformFilter=vtk.vtkTransformPolyDataFilter()
+        transformFilter.SetTransform(transform)
+        transformFilter.SetInputData(smootherSinc.GetOutput())
+        transformFilter.Update()
+
+        modelNode = modelsLogic.AddModel(transformFilter.GetOutput())
+      
+      else:
+        modelNode = modelsLogic.AddModel(smootherSinc.GetOutput())
+        
+      seg = self.scriptedEffect.parameterSetNode().GetSegmentationNode().GetSegmentation().GetSegment(self.scriptedEffect.parameterSetNode().GetSelectedSegmentID())
+      modelNode.GetDisplayNode().SetColor(seg.GetColor())
+      modelNode.SetName(seg.GetName())
+
+      outputImageData.DeepCopy(inputImageData)
+      return modelNode
+
+        
+
+      
+    
     def smoothPolydata(polydata):
       decimator = vtk.vtkDecimatePro()
       decimator.SetInputData(polydata)
@@ -517,14 +564,8 @@ class SRSFilterLogic(object):
     inputDiscreteCubes.Update()
 
     if FILTERMODE == 'TEST':
-      modelsLogic = slicer.modules.models.logic()
-      modelNode = modelsLogic.AddModel(inputDiscreteCubes.GetOutput())
-      seg = self.scriptedEffect.parameterSetNode().GetSegmentationNode().GetSegmentation().GetSegment(self.scriptedEffect.parameterSetNode().GetSelectedSegmentID())
-      modelNode.GetDisplayNode().SetColor(seg.GetColor())
-      modelNode.SetName(seg.GetName())
-      outputImageData.DeepCopy(inputImageData)
-      
-      return modelNode
+      return addModel(inputDiscreteCubes.GetOutput())
+
 
     #region create sphere
     bounds = np.array([0]*6)
@@ -582,7 +623,7 @@ class SRSFilterLogic(object):
       shrinkModelPD.SetPoints(points)
 
       if x == (ITERATIONSFIRSTSHRINKWRAP - 1):
-        if self.logCallback: self.logCallback('First shrinkwrap completed.')
+        if self.logCallback: self.logCallback('First shrinkwrap completed...')
         break
 
       # remesh
@@ -645,7 +686,7 @@ class SRSFilterLogic(object):
       reverse.Update()
 
       shrinkModelPD.DeepCopy(reverse.GetOutput())
-      if self.logCallback: self.logCallback('First shrinkwrap: %s/%s.' %(x+1, ITERATIONSFIRSTSHRINKWRAP))
+      if self.logCallback: self.logCallback('First shrinkwrap: %s/%s' %(x+1, ITERATIONSFIRSTSHRINKWRAP))
     
     if FILTERMODE == 'SHALLOW':
       return polydataToImagedata(shrinkModelPD)
@@ -798,7 +839,7 @@ class SRSFilterLogic(object):
                   if distance < RAYCASTMAXHITDISTANCE:
                     shrinkModelPD.GetPoints().SetPoint(i, vert_location_dict[i][1])
                     pointChanged = True
-    if self.logCallback: self.logCallback('Raycast completed.')
+    if self.logCallback: self.logCallback('Raycast completed...')
 
     if FILTERMODE == 'RAYCAST':
       return polydataToImagedata(shrinkModelPD)
@@ -872,7 +913,7 @@ class SRSFilterLogic(object):
       shrinkModelPD.DeepCopy(reverse.GetOutput())
 
       if x == (ITERATIONSSECONDSHRINKWRAP - 1):
-        if self.logCallback: self.logCallback('Second shrinkwrap completed.')
+        if self.logCallback: self.logCallback('Second shrinkwrap completed...')
         break
 
       # shrinkwrap
@@ -884,7 +925,7 @@ class SRSFilterLogic(object):
       
       shrinkModelPD.DeepCopy(smoothFilter.GetOutput())
 
-      if self.logCallback: self.logCallback('Second shrinkwrap: %s/%s.' %(x+1, ITERATIONSSECONDSHRINKWRAP))
+      if self.logCallback: self.logCallback('Second shrinkwrap: %s/%s' %(x+1, ITERATIONSSECONDSHRINKWRAP))
     
     if FILTERMODE == 'DEEP':
       return polydataToImagedata(shrinkModelPD)
@@ -915,18 +956,11 @@ class SRSFilterLogic(object):
 
     nonsolidPolyData.RemoveDeletedCells()
     shrinkModelPD.DeepCopy(nonsolidPolyData)
-    if self.logCallback: self.logCallback('Caps removed.')
+    if self.logCallback: self.logCallback('Caps removed...')
 
     if FILTERMODE == 'NONSOLID':
       
-      modelsLogic = slicer.modules.models.logic()
-      modelNode = modelsLogic.AddModel(smoothPolydata(shrinkModelPD))
-      seg = self.scriptedEffect.parameterSetNode().GetSegmentationNode().GetSegmentation().GetSegment(self.scriptedEffect.parameterSetNode().GetSelectedSegmentID())
-      modelNode.GetDisplayNode().SetColor(seg.GetColor())
-      modelNode.SetName(seg.GetName())
-      outputImageData.DeepCopy(inputImageData)
-      
-      return modelNode
+      return addModel(shrinkModelPD)
 
     #endregion
 
@@ -1052,17 +1086,10 @@ class SRSFilterLogic(object):
     triangleFilter.Update()
 
     shrinkModelPD.DeepCopy(triangleFilter.GetOutput())
-    if self.logCallback: self.logCallback('Model solidified.')
+    if self.logCallback: self.logCallback('Model solidified...')
 
     if FILTERMODE == 'SOLID':
-      modelsLogic = slicer.modules.models.logic()
-      modelNode = modelsLogic.AddModel(smoothPolydata(shrinkModelPD))
-      seg = self.scriptedEffect.parameterSetNode().GetSegmentationNode().GetSegmentation().GetSegment(self.scriptedEffect.parameterSetNode().GetSelectedSegmentID())
-      modelNode.GetDisplayNode().SetColor(seg.GetColor())
-      modelNode.SetName(seg.GetName())
-      outputImageData.DeepCopy(inputImageData)
-      
-      return modelNode
+      return addModel(shrinkModelPD)
 
     return polydataToImagedata(shrinkModelPD)
     #endregion
