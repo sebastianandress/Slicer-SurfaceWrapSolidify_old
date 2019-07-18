@@ -14,20 +14,6 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
     scriptedEffect.perSegment = False # this effect operates on all segments at once (not on a single selected segment)
     AbstractScriptedSegmentEditorEffect.__init__(self, scriptedEffect)
 
-    self.segment2DFillOpacity = None
-    self.segment2DOutlineOpacity = None
-    self.previewedSegmentID = None
-    self.filteredOrientedImageData = None
-
-    self.timer = qt.QTimer()
-    self.previewState = 0
-    self.previewStep = 1
-    self.previewSteps = 5
-    self.timer.connect('timeout()', self.preview)
-
-    self.previewPipelines = {}
-    self.setupPreviewDisplay()
-
     self.logic = SRSFilterLogic(scriptedEffect)
     self.logic.logCallback = self.addLog
 
@@ -59,20 +45,18 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
     # filter modes
     self.filterModeTypeMap = {}
     self.filterModes = []
-    # self.testModelButton = None
-    # self.filterModes.append({'button':self.testModelButton, 'name':'Test Model', 'id':'TEST', 'default':False, 'output':'model'})
     self.surfaceButton = None
-    self.filterModes.append({'button':self.surfaceButton, 'name':'Surface', 'id':'SURFACE', 'default':True, 'output':'image'})
+    self.filterModes.append({'button':self.surfaceButton, 'name':'Surface', 'id':MODE_SURFACE_SEG, 'default':True, 'output':'image'})
     self.hullShallowButton = None
-    self.filterModes.append({'button':self.hullShallowButton, 'name':'Hull Shallow', 'id':'SHALLOW','default':False, 'output':'image'})
+    self.filterModes.append({'button':self.hullShallowButton, 'name':'Hull Shallow', 'id':MODE_SHALLOW_SEG,'default':False, 'output':'image'})
     self.raycastResultButton = None
-    self.filterModes.append({'button':self.raycastResultButton, 'name':'Raycast Result', 'id':'RAYCAST','default':False, 'output':'image'})
+    self.filterModes.append({'button':self.raycastResultButton, 'name':'Raycast Result', 'id':MODE_RAYCAST_SEG,'default':False, 'output':'image'})
     self.hullDeepButton = None
-    self.filterModes.append({'button':self.hullDeepButton, 'name':'Hull Deep', 'id':'DEEP','default':False, 'output':'image'})
+    self.filterModes.append({'button':self.hullDeepButton, 'name':'Hull Deep', 'id':MODE_DEEP_SEG,'default':False, 'output':'image'})
     self.manifoldModelButton = None
-    self.filterModes.append({'button':self.manifoldModelButton, 'name':'Solid Model', 'id':'SOLID','default':False, 'output':'model'})
+    self.filterModes.append({'button':self.manifoldModelButton, 'name':'Solid Model', 'id':MODE_MANIFOLD_MODEL,'default':False, 'output':'model'})
     self.nonmanifoldModelButton = None
-    self.filterModes.append({'button':self.nonmanifoldModelButton, 'name':'Non-Manifold Model', 'id':'NONSOLID','default':False, 'output':'model'})
+    self.filterModes.append({'button':self.nonmanifoldModelButton, 'name':'Non-Manifold Model', 'id':MODE_NONMANIFOLD_MODEL,'default':False, 'output':'model'})
 
   def clone(self):
     # It should not be necessary to modify this method
@@ -98,60 +82,8 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
     self.cleanup()
   
   def cleanup(self):
-    self.restorePreviewedSegmentTransparency()
+    pass
 
-    # Clear preview pipeline and stop timer
-    self.clearPreviewDisplay()
-    self.timer.stop()
-    self.filteredOrientedImageData = None
-
-  def setCurrentSegmentTransparent(self):
-    """Save current segment opacity and set it to zero
-    to temporarily hide the segment so that threshold preview
-    can be seen better.
-    It also restores opacity of previously previewed segment.
-    Call restorePreviewedSegmentTransparency() to restore original
-    opacity.
-    """
-    segmentationNode = self.scriptedEffect.parameterSetNode().GetSegmentationNode()
-    if not segmentationNode:
-      return
-    displayNode = segmentationNode.GetDisplayNode()
-    if not displayNode:
-      return
-    segmentID = self.scriptedEffect.parameterSetNode().GetSelectedSegmentID()
-
-    if segmentID == self.previewedSegmentID:
-      # already previewing the current segment
-      return
-
-    # If an other segment was previewed before, restore that.
-    if self.previewedSegmentID:
-      self.restorePreviewedSegmentTransparency()
-
-    # Make current segment fully transparent
-    if segmentID:
-      self.segment2DFillOpacity = displayNode.GetSegmentOpacity2DFill(segmentID)
-      self.segment2DOutlineOpacity = displayNode.GetSegmentOpacity2DOutline(segmentID)
-      self.previewedSegmentID = segmentID
-      displayNode.SetSegmentOpacity2DFill(segmentID, 0)
-      displayNode.SetSegmentOpacity2DOutline(segmentID, 0)
-  
-  def restorePreviewedSegmentTransparency(self):
-    """Restore previewed segment's opacity that was temporarily
-    made transparen by calling setCurrentSegmentTransparent()."""
-    segmentationNode = self.scriptedEffect.parameterSetNode().GetSegmentationNode()
-    if not segmentationNode:
-      return
-    displayNode = segmentationNode.GetDisplayNode()
-    if not displayNode:
-      return
-    if not self.previewedSegmentID:
-      # already previewing the current segment
-      return
-    displayNode.SetSegmentOpacity2DFill(self.previewedSegmentID, self.segment2DFillOpacity)
-    displayNode.SetSegmentOpacity2DOutline(self.previewedSegmentID, self.segment2DOutlineOpacity)
-    self.previewedSegmentID = None
 
   def setupOptionsFrame(self):
     
@@ -160,7 +92,7 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
     # self.updatePreviewButton.setToolTip("Fill selected segment in regions that are in the specified intensity range.")
     # self.scriptedEffect.addOptionsWidget(self.updatePreviewButton)
 
-    self.applyButton = qt.QPushButton("Preview")
+    self.applyButton = qt.QPushButton("Apply")
     self.applyButton.objectName = self.__class__.__name__ + 'Apply'
     self.applyButton.setToolTip("")
     self.scriptedEffect.addOptionsWidget(self.applyButton)
@@ -204,11 +136,10 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
 
 
   def createCursor(self, widget):
-    # Turn off effect-specific cursor for this effect
     return slicer.util.mainWindow().cursor
 
   def layoutChanged(self):
-    self.setupPreviewDisplay()
+    pass
 
   def processInteractionEvents(self, callerInteractor, eventId, viewWidget):
     return False # For the sake of example
@@ -220,7 +151,7 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
     for param in self.parameters:
       self.scriptedEffect.setParameterDefault(param['id'], param['default'])
 
-    self.scriptedEffect.setParameterDefault("Filtermode", next(item for item in self.filterModes if item['default'] == True)['id'])
+    self.scriptedEffect.setParameterDefault("FilterMode", next(item for item in self.filterModes if item['default'] == True)['id'])
 
   def updateGUIFromMRML(self):
     for param in self.parameters:
@@ -229,12 +160,11 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
       param['slider'].value = abs(value)
       param['slider'].blockSignals(wasBlocked)
     
-    filterModeName = self.scriptedEffect.parameter("Filtermode")
+    filterModeName = self.scriptedEffect.parameter("FilterMode")
     filterModeButton = list(self.filterModeTypeMap.keys())[list(self.filterModeTypeMap.values()).index(filterModeName)]
     filterModeButton.setChecked(True)
 
     self.cleanup()
-    self.updateApplyButton()
     
 
   def updateMRMLFromGUI(self):
@@ -243,189 +173,40 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
 
     for button in self.filterModeTypeMap:
       if button.isChecked():
-        self.scriptedEffect.setParameter("Filtermode", self.filterModeTypeMap[button])
+        self.scriptedEffect.setParameter("FilterMode", self.filterModeTypeMap[button])
     
     self.cleanup()
-    self.updateApplyButton()
   
 
   #
   # Effect specific methods (the above ones are the API methods to override)
   #
 
-  def updateApplyButton(self):
-    filterModeName = self.scriptedEffect.parameter("Filtermode")
-    if filterModeName in [item['id'] for item in self.filterModes if item['output'] == 'model'] or self.filteredOrientedImageData:
-      self.applyButton.text = 'Apply'
-    else:
-      self.applyButton.text = 'Preview'
-
   def onApply(self):
 
     self.scriptedEffect.saveStateForUndo()
-
-    filterModeName = self.scriptedEffect.parameter("Filtermode")
-    if filterModeName in [item['id'] for item in self.filterModes if item['output'] == 'model']:
-      self.applyFilter()
-      self.cleanup()
-    
-    elif self.filteredOrientedImageData:
-      self.scriptedEffect.modifySelectedSegmentByLabelmap(self.filteredOrientedImageData, slicer.qSlicerSegmentEditorAbstractEffect.ModificationModeSet)
-      self.cleanup()
-    
-    else:
-      self.applyFilter()
-      self.setCurrentSegmentTransparent()
-      self.setupPreviewDisplay()
-      self.timer.start(200)
-    
-    self.updateApplyButton()
-
-
-  def applyFilter(self):
     
     qt.QApplication.setOverrideCursor(qt.Qt.WaitCursor)
-    self.addLog('Filtering process started...')
-
-    # Get master volume image data
-    self.filteredOrientedImageData = vtkSegmentationCorePython.vtkOrientedImageData()
-    selectedSegmentLabelmap = self.scriptedEffect.selectedSegmentLabelmap()
 
     #TODO: check if segment is not empty
 
-    self.logic.srsFilter(self.scriptedEffect.selectedSegmentLabelmap(), self.filteredOrientedImageData)
+    seg = self.scriptedEffect.parameterSetNode().GetSegmentationNode()
+    segID = self.scriptedEffect.parameterSetNode().GetSelectedSegmentID()
 
-    self.addLog('')
+    args = []
+    for param in self.parameters:
+      args.append(self.scriptedEffect.doubleParameter(param['id']))
+
+    args.append(self.scriptedEffect.parameter('FilterMode'))
+
+    self.logic.ApplySRSFilter(seg, segID, *args)
+
     qt.QApplication.restoreOverrideCursor()
-
-    self.updateApplyButton()
-    
-    
-
-  def clearPreviewDisplay(self):
-    for sliceWidget, pipeline in self.previewPipelines.items():
-      self.scriptedEffect.removeActor2D(sliceWidget, pipeline.actor)
-    self.previewPipelines = {}
-
-  def setupPreviewDisplay(self):
-    # Clear previous pipelines before setting up the new ones
-    self.clearPreviewDisplay()
-
-    layoutManager = slicer.app.layoutManager()
-    if layoutManager is None:
-      return
-
-    # Add a pipeline for each 2D slice view
-    for sliceViewName in layoutManager.sliceViewNames():
-      sliceWidget = layoutManager.sliceWidget(sliceViewName)
-      if not self.scriptedEffect.segmentationDisplayableInView(sliceWidget.mrmlSliceNode()):
-        continue
-      renderer = self.scriptedEffect.renderer(sliceWidget)
-      if renderer is None:
-        logging.error("setupPreviewDisplay: Failed to get renderer!")
-        continue
-
-      # Create pipeline
-      pipeline = PreviewPipeline()
-      self.previewPipelines[sliceWidget] = pipeline
-
-      # Add actor
-      self.scriptedEffect.addActor2D(sliceWidget, pipeline.actor)
-
-  def preview(self):
-    """Set values to pipeline"""
-
-    opacity = 0.5 + self.previewState / (2. * self.previewSteps)
-    
-    if self.filteredOrientedImageData is None:
-      logging.error('SRS-Filter not applied yet.')
-      return
-
-    # Get color of edited segment
-    segmentationNode = self.scriptedEffect.parameterSetNode().GetSegmentationNode()
-    if not segmentationNode:
-      # scene was closed while preview was active
-      return
-    displayNode = segmentationNode.GetDisplayNode()
-    if displayNode is None:
-      logging.error("preview: Invalid segmentation display node!")
-      color = [0.5,0.5,0.5]
-    segmentID = self.scriptedEffect.parameterSetNode().GetSelectedSegmentID()
-
-    # Make sure we keep the currently selected segment hidden (the user may have changed selection)
-    if segmentID != self.previewedSegmentID:
-      self.setCurrentSegmentTransparent()
-
-    r,g,b = segmentationNode.GetSegmentation().GetSegment(segmentID).GetColor()
-
-    img = vtkSegmentationCorePython.vtkOrientedImageData()
-    img.DeepCopy(self.filteredOrientedImageData)
-    img.SetImageToWorldMatrix(vtk.vtkMatrix4x4())
-
-    # Set values to pipelines
-    for sliceWidget in self.previewPipelines:
-      pipeline = self.previewPipelines[sliceWidget]
-      pipeline.lookupTable.SetTableValue(1,  r, g, b,  opacity)
-      sliceLogic = sliceWidget.sliceLogic()
-      backgroundLogic = sliceLogic.GetBackgroundLayer()
-      
-      ##slice here
-      reslice = vtk.vtkImageReslice()
-      reslice.SetInputData(img)
-      reslice.SetOutputDimensionality(2)
-      reslice.SetInterpolationModeToLinear()
-      reslice.SetResliceTransform(backgroundLogic.GetReslice().GetResliceTransform())
-      reslice.SetOutputExtent(backgroundLogic.GetReslice().GetOutputExtent())
-      reslice.SetOutputOrigin(backgroundLogic.GetReslice().GetOutputOrigin())
-      #reslice.SetOutputSpacing(backgroundLogic.GetReslice().GetOutputSpacing())
-
-      pipeline.colorMapper.SetInputConnection(reslice.GetOutputPort())
-      pipeline.actor.VisibilityOn()
-      sliceWidget.sliceView().scheduleRender()
-
-    self.previewState += self.previewStep
-    if self.previewState >= self.previewSteps:
-      self.previewStep = -1
-    if self.previewState <= 0:
-      self.previewStep = 1
 
 
   def addLog(self, text):
     slicer.util.showStatusMessage(text)
     slicer.app.processEvents() # force update
-
-#
-# PreviewPipeline
-#
-class PreviewPipeline(object):
-  """ Visualization objects and pipeline for each slice view for threshold preview
-  """
-
-  def __init__(self):
-    self.lookupTable = vtk.vtkLookupTable()
-    self.lookupTable.SetRampToLinear()
-    self.lookupTable.SetNumberOfTableValues(2)
-    self.lookupTable.SetTableRange(0, 1)
-    self.lookupTable.SetTableValue(0,  0, 0, 0,  0)
-    self.colorMapper = vtk.vtkImageMapToRGBA()
-    self.colorMapper.SetOutputFormatToRGBA()
-    self.colorMapper.SetLookupTable(self.lookupTable)
-
-    # Feedback actor
-    self.mapper = vtk.vtkImageMapper()
-    self.dummyImage = vtk.vtkImageData()
-    self.dummyImage.AllocateScalars(vtk.VTK_UNSIGNED_INT, 1)
-    self.mapper.SetInputData(self.dummyImage)
-    self.actor = vtk.vtkActor2D()
-    self.actor.VisibilityOff()
-    self.actor.SetMapper(self.mapper)
-    self.mapper.SetColorWindow(255)
-    self.mapper.SetColorLevel(128)
-
-    # Setup pipeline
-    #self.colorMapper.SetInputConnection(self.thresholdFilter.GetOutputPort())
-    self.mapper.SetInputConnection(self.colorMapper.GetOutputPort())
-
 
 
 
@@ -435,43 +216,116 @@ class SRSFilterLogic(object):
     self.scriptedEffect = scriptedEffect
     self.logCallback = None
 
-  def srsFilter(self, inputImageData, outputImageData):
+  def ApplySRSFilter(self,\
+    segmentationNode, segmentID,\
+    offsetFirstShrinkwrap=15,\
+    spacingFirstRemesh=10,\
+    iterationsFirstShrinkwrap=3,\
+    iterationsSecondShrinkwrap=5,\
+    raycastSearchEdgeLength=20,\
+    raycastOutputEdgeLength=2,\
+    raycastMaxHitDistance=2,\
+    raycastMaxLength=100,\
+    raycastMinLength=0,\
+    maxModelsDistance=0.5,\
+    solidificationThickness=1.5,\
+    filterMode='SURFACE'):
 
-    OFFSETFIRSTSHRINKWRAP = self.scriptedEffect.doubleParameter('OffsetFirstShrinkwrap')
-    SPACINGFIRSTREMESH = self.scriptedEffect.doubleParameter('SpacingFirstRemesh')
-    ITERATIONSFIRSTSHRINKWRAP = int(self.scriptedEffect.doubleParameter('IterationsFirstShrinkwrap'))
-    ITERATIONSSECONDSHRINKWRAP = int(self.scriptedEffect.doubleParameter('IterationsSecondShrinkwrap'))
-    RAYCASTSEARCHEDGELENGTH = self.scriptedEffect.doubleParameter('RaycastSearchEdgeLength')
-    RAYCASTOUTPUTEDGELENGTH = self.scriptedEffect.doubleParameter('RaycastOutputEdgeLength')
-    RAYCASTMAXHITDISTANCE = self.scriptedEffect.doubleParameter('RaycastMaxHitDistance')
-    RAYCASTMAXLENGTH = self.scriptedEffect.doubleParameter('RaycastMaxLength')
-    RAYCASTMINLENGTH = self.scriptedEffect.doubleParameter('RaycastMinLength')
-    MAXMODELSDISTANCE = self.scriptedEffect.doubleParameter('MaxModelsDistance')
-    THICKNESS = self.scriptedEffect.doubleParameter('SolidificationThickness')
-    FILTERMODE = self.scriptedEffect.parameter('Filtermode')
+    self.segLogic = slicer.vtkSlicerSegmentationsModuleLogic
+    self.modelsLogic = slicer.modules.models.logic()
 
-    # OFFSETFIRSTSHRINKWRAP = 15# self.scriptedEffect.doubleParameter('OffsetFirstShrinkwrap')
-    # SPACINGFIRSTREMESH = 10#self.scriptedEffect.doubleParameter('SpacingFirstRemesh')
-    # ITERATIONSFIRSTSHRINKWRAP = 3#int(self.scriptedEffect.doubleParameter('IterationsFirstShrinkwrap'))
-    # ITERATIONSSECONDSHRINKWRAP = 5#int(self.scriptedEffect.doubleParameter('IterationsSecondShrinkwrap'))
-    # RAYCASTSEARCHEDGELENGTH = 20#self.scriptedEffect.doubleParameter('RaycastSearchEdgeLength')
-    # RAYCASTOUTPUTEDGELENGTH = 2#self.scriptedEffect.doubleParameter('RaycastOutputEdgeLength')
-    # RAYCASTMAXHITDISTANCE = 2#self.scriptedEffect.doubleParameter('RaycastMaxHitDistance')
-    # RAYCASTMAXLENGTH = 100#self.scriptedEffect.doubleParameter('RaycastMaxLength')
-    # RAYCASTMINLENGTH = 0#self.scriptedEffect.doubleParameter('RaycastMinLength')
-    # MAXMODELSDISTANCE = 0.5#elf.scriptedEffect.doubleParameter('MaxModelsDistance')
-    # THICKNESS = 1.5#self.scriptedEffect.doubleParameter('SolidificationThickness')
-    # FILTERMODE = 'SHALLOW'#self.scriptedEffect.parameter('Filtermode')
+    tempNodes = []
+
+    # offsetFirstShrinkwrap = 15# self.scriptedEffect.doubleParameter('OffsetFirstShrinkwrap')
+    # spacingFirstRemesh = 10#self.scriptedEffect.doubleParameter('SpacingFirstRemesh')
+    # iterationsFirstShrinkwrap = 3#int(self.scriptedEffect.doubleParameter('IterationsFirstShrinkwrap'))
+    # iterationsSecondShrinkwrap = 5#int(self.scriptedEffect.doubleParameter('IterationsSecondShrinkwrap'))
+    # raycastSearchEdgeLength = 20#self.scriptedEffect.doubleParameter('RaycastSearchEdgeLength')
+    # raycastOutputEdgeLength = 2#self.scriptedEffect.doubleParameter('RaycastOutputEdgeLength')
+    # raycastMaxHitDistance = 2#self.scriptedEffect.doubleParameter('RaycastMaxHitDistance')
+    # raycastMaxLength = 100#self.scriptedEffect.doubleParameter('RaycastMaxLength')
+    # raycastMinLength = 0#self.scriptedEffect.doubleParameter('RaycastMinLength')
+    # maxModelsDistance = 0.5#elf.scriptedEffect.doubleParameter('MaxModelsDistance')
+    # solidificationThickness = 1.5#self.scriptedEffect.doubleParameter('SolidificationThickness')
+    # filterMode = 'SURFACE'#self.scriptedEffect.parameter('Filtermode')
+
+    def polydataToModel(polydata):
+      if self.logCallback: self.logCallback('Creating Model...')
+
+      decimator = vtk.vtkDecimatePro()
+      decimator.SetInputData(polydata)
+      decimator.SetFeatureAngle(60)
+      decimator.SplittingOff()
+      decimator.PreserveTopologyOn()
+      decimator.SetMaximumError(1)
+      decimator.SetTargetReduction(0.25)
+      decimator.ReleaseDataFlagOff()
+      decimator.Update()
+
+      smootherSinc = vtk.vtkWindowedSincPolyDataFilter()
+      smootherSinc.SetPassBand(0.1)
+      smootherSinc.SetInputConnection(decimator.GetOutputPort())
+      smootherSinc.SetNumberOfIterations(10)
+      smootherSinc.FeatureEdgeSmoothingOff()
+      smootherSinc.BoundarySmoothingOff()
+      smootherSinc.ReleaseDataFlagOn()
+      smootherSinc.Update()
+
+      # if self.transformMatrix:
+      #   mat = vtk.vtkMatrix4x4()
+      #   transform = vtk.vtkTransform()
+      #   transform.SetMatrix(self.transformMatrix)
+
+      #   transformFilter=vtk.vtkTransformPolyDataFilter()
+      #   transformFilter.SetTransform(transform)
+      #   transformFilter.SetInputData(smoothedPD)
+      #   transformFilter.Update()
+
+      #   modelNode = modelsLogic.AddModel(transformFilter.GetOutput())
+      
+      # else:
+      modelNode = modelsLogic.AddModel(smootherSinc.GetOutput)
+        
+      seg = self.scriptedEffect.parameterSetNode().GetSegmentationNode().GetSegmentation().GetSegment(self.scriptedEffect.parameterSetNode().GetSelectedSegmentID())
+      modelNode.GetDisplayNode().SetColor(seg.GetColor())
+      modelNode.SetName(seg.GetName())
+
+      # outputImageData.DeepCopy(inputSegmentLabelmap)
+      return True
+      
+
+    def polydataToSegment(polydata):
+      if self.logCallback: self.logCallback('Updating Segmentation...')
+
+      tempOutputModelNode = self.modelsLogic.AddModel(polydata)
+      tempSegment = self.segLogic.CreateSegmentFromModelNode(tempOutputModelNode,segmentationNode)
+      sid = segmentationNode.GetSegmentation().GetSegmentIdBySegment(tempSegment)
+      segmentationNode.GetSegmentation().AddSegment(tempSegment)
+      segmentationNode.CreateClosedSurfaceRepresentation()
+      
+      labelRep = tempSegment.GetRepresentation(vtkSegmentationCorePython.vtkSegmentationConverter.GetSegmentationBinaryLabelmapRepresentationName())
+      self.segLogic.SetBinaryLabelmapToSegment(labelRep, segmentationNode, segmentID, self.segLogic.MODE_REPLACE, labelRep.GetExtent())
+
+      segmentationNode.GetSegmentation().RemoveSegment(tempSegment)
+      tempNodes.append(tempOutputModelNode)
+      return True
+
+    def cleanup():
+      for node in tempNodes:
+        if node:
+          slicer.mrmlScene.RemoveNode(node)
+      
+      if self.logCallback: self.logCallback('')
 
     def polydataToImagedata(polydata):
 
-      outputImageData.DeepCopy(inputImageData)
+      outputImageData.DeepCopy(inputSegmentLabelmap)
       
       pol2stenc = vtk.vtkPolyDataToImageStencil()
       pol2stenc.SetInputData(polydata)
-      pol2stenc.SetOutputOrigin(inputImageData.GetOrigin())
-      pol2stenc.SetOutputSpacing(inputImageData.GetSpacing())
-      pol2stenc.SetOutputWholeExtent(inputImageData.GetExtent())
+      pol2stenc.SetOutputOrigin(inputSegmentLabelmap.GetOrigin())
+      pol2stenc.SetOutputSpacing(inputSegmentLabelmap.GetSpacing())
+      pol2stenc.SetOutputWholeExtent(inputSegmentLabelmap.GetExtent())
       pol2stenc.Update()
 
       imgstenc = vtk.vtkImageStencil()
@@ -493,6 +347,33 @@ class SRSFilterLogic(object):
       return outputImageData
 
     def addModel(polydata):
+      
+      modelsLogic = slicer.modules.models.logic()
+      smoothedPD = smoothPolyData(polydata)
+
+      if self.transformMatrix:
+        mat = vtk.vtkMatrix4x4()
+        transform = vtk.vtkTransform()
+        transform.SetMatrix(self.transformMatrix)
+
+        transformFilter=vtk.vtkTransformPolyDataFilter()
+        transformFilter.SetTransform(transform)
+        transformFilter.SetInputData(smoothedPD)
+        transformFilter.Update()
+
+        modelNode = modelsLogic.AddModel(transformFilter.GetOutput())
+      
+      else:
+        modelNode = modelsLogic.AddModel(smoothedPD)
+        
+      seg = self.scriptedEffect.parameterSetNode().GetSegmentationNode().GetSegmentation().GetSegment(self.scriptedEffect.parameterSetNode().GetSelectedSegmentID())
+      modelNode.GetDisplayNode().SetColor(seg.GetColor())
+      modelNode.SetName(seg.GetName())
+
+      outputImageData.DeepCopy(inputSegmentLabelmap)
+      return modelNode
+
+    def smoothPolyData(polydata):
       decimator = vtk.vtkDecimatePro()
       decimator.SetInputData(polydata)
       decimator.SetFeatureAngle(60)
@@ -512,65 +393,24 @@ class SRSFilterLogic(object):
       smootherSinc.ReleaseDataFlagOn()
       smootherSinc.Update()
 
-      modelsLogic = slicer.modules.models.logic()
+      return smootherSinc.GetOutput()
 
-      if self.transformMatrix:
-        mat = vtk.vtkMatrix4x4()
-        transform = vtk.vtkTransform()
-        transform.SetMatrix(self.transformMatrix)
 
-        transformFilter=vtk.vtkTransformPolyDataFilter()
-        transformFilter.SetTransform(transform)
-        transformFilter.SetInputData(smootherSinc.GetOutput())
-        transformFilter.Update()
+    if self.logCallback: self.logCallback('Filtering process started...')
 
-        modelNode = modelsLogic.AddModel(transformFilter.GetOutput())
-      
-      else:
-        modelNode = modelsLogic.AddModel(smootherSinc.GetOutput())
-        
-      seg = self.scriptedEffect.parameterSetNode().GetSegmentationNode().GetSegmentation().GetSegment(self.scriptedEffect.parameterSetNode().GetSelectedSegmentID())
-      modelNode.GetDisplayNode().SetColor(seg.GetColor())
-      modelNode.SetName(seg.GetName())
-
-      outputImageData.DeepCopy(inputImageData)
-      return modelNode
-
-    # create model from segmentation
-    threshold = vtk.vtkImageThreshold()
-    
-    # Workaround till Slicer 5 release
-    if FILTERMODE in ('TEST', 'SOLID', 'NONSOLID') and type(inputImageData) == vtkSegmentationCorePython.vtkOrientedImageData:
-      self.transformMatrix = vtk.vtkMatrix4x4()
-      newInputImageData = vtkSegmentationCorePython.vtkOrientedImageData()
-      newInputImageData.DeepCopy(inputImageData)
-      newInputImageData.GetImageToWorldMatrix(self.transformMatrix)
-      newInputImageData.SetImageToWorldMatrix(vtk.vtkMatrix4x4())
-      threshold.SetInputData(newInputImageData)
-
-    else:
-      self.transformMatrix = None
-      threshold.SetInputData(inputImageData)
-
-    threshold.ThresholdBetween(0,0)
-    threshold.ReplaceOutOn()
-    threshold.ReplaceInOn()
-    threshold.SetInValue(0)
-    threshold.SetOutValue(1)
-    threshold.Update()
-
-    inputDiscreteCubes = vtk.vtkDiscreteMarchingCubes()
-    inputDiscreteCubes.SetInputData(threshold.GetOutput())
-    inputDiscreteCubes.GenerateValues(1,0,0)
-    inputDiscreteCubes.Update()
-
-    if FILTERMODE == 'TEST':
-      return addModel(inputDiscreteCubes.GetOutput())
-
+    # tempInputModelNode = slicer.vtkMRMLModelNode()
+    # slicer.mrmlScene.AddNode(tempInputModelNode)
+    # tempNodes.append(tempInputModelNode)
+    # self.segLogic.ExportSegmentToRepresentationNode(segmentationNode.GetSegmentation().GetSegment(segmentID), tempInputModelNode)
+    segmentationNode.CreateClosedSurfaceRepresentation()
+    segmentationNode.CreateBinaryLabelmapRepresentation()
+    segment = segmentationNode.GetSegmentation().GetSegment(segmentID)
+    inputSegmentLabelmap = segment.GetRepresentation(vtkSegmentationCorePython.vtkSegmentationConverter.GetSegmentationBinaryLabelmapRepresentationName())
+    inputPolyData = segment.GetRepresentation(vtkSegmentationCorePython.vtkSegmentationConverter.GetSegmentationClosedSurfaceRepresentationName())
 
     #region create sphere
     bounds = np.array([0]*6)
-    inputDiscreteCubes.GetOutput().GetBounds(bounds)
+    inputPolyData.GetBounds(bounds)
     dimensions = np.array([bounds[1]-bounds[0],bounds[3]-bounds[2],bounds[5]-bounds[4]])
     center = np.array([bounds[0]+dimensions[0]/2, bounds[2]+dimensions[1]/2, bounds[4]+dimensions[2]/2])
     radius = max(dimensions)
@@ -589,15 +429,18 @@ class SRSFilterLogic(object):
     shrinkModelPD = vtk.vtkPolyData()
     shrinkModelPD.DeepCopy(cleanPolyData.GetOutput())
 
+
     #endregion
 
     #region Shrinkwrap
 
     cellLocator = vtk.vtkCellLocator()
-    cellLocator.SetDataSet(inputDiscreteCubes.GetOutput())
+    cellLocator.SetDataSet(inputPolyData)
     cellLocator.BuildLocator()
-
-    for x in range(ITERATIONSFIRSTSHRINKWRAP):
+  
+    for x in range(int(iterationsFirstShrinkwrap)):
+      
+      if self.logCallback: self.logCallback('Shrinkwrapping %s/%s...' %(x+1, int(iterationsFirstShrinkwrap)))
       
       points = shrinkModelPD.GetPoints()
 
@@ -614,8 +457,8 @@ class SRSFilterLogic(object):
         vector = closestPoint - originPoint
         vectorLength = np.linalg.norm(vector)
 
-        if OFFSETFIRSTSHRINKWRAP > 0 and vectorLength > 0.01:
-          newLocation = closestPoint - ((vector/vectorLength) * OFFSETFIRSTSHRINKWRAP)
+        if offsetFirstShrinkwrap > 0 and vectorLength > 0.01:
+          newLocation = closestPoint - ((vector/vectorLength) * offsetFirstShrinkwrap)
         else:
           newLocation = closestPoint
         
@@ -623,8 +466,7 @@ class SRSFilterLogic(object):
       
       shrinkModelPD.SetPoints(points)
 
-      if x == (ITERATIONSFIRSTSHRINKWRAP - 1):
-        if self.logCallback: self.logCallback('First shrinkwrap completed...')
+      if x == (int(iterationsFirstShrinkwrap) - 1):
         break
 
       # remesh
@@ -633,7 +475,7 @@ class SRSFilterLogic(object):
       bounds = [0]*6
       shrinkModelPD.GetBounds(bounds)
 
-      spacing = [SPACINGFIRSTREMESH]*3
+      spacing = [spacingFirstRemesh]*3
       whiteImage.SetSpacing(spacing)
 
       dim = [0]*3
@@ -687,14 +529,16 @@ class SRSFilterLogic(object):
       reverse.Update()
 
       shrinkModelPD.DeepCopy(reverse.GetOutput())
-      if self.logCallback: self.logCallback('First shrinkwrap: %s/%s' %(x+1, ITERATIONSFIRSTSHRINKWRAP))
     
-    if FILTERMODE == 'SHALLOW':
-      return polydataToImagedata(shrinkModelPD)
+    if filterMode == MODE_SHALLOW_SEG:
+      polydataToSegment(shrinkModelPD)
+      cleanup()
+      return True
 
     #endregion
 
     #region Raycast
+    if self.logCallback: self.logCallback('Raycasting...')
 
     # Find Large Faces and remember IDs of connected points
     largeCellIds = vtk.vtkIdList() # IDs of cells
@@ -711,7 +555,7 @@ class SRSFilterLogic(object):
         length = np.linalg.norm(pointsArray[pa] - pointsArray[pa + 1])
         edgeLength.append(length)
 
-      if max(edgeLength) > RAYCASTSEARCHEDGELENGTH:
+      if max(edgeLength) > raycastSearchEdgeLength:
         largeCellIds.InsertNextId(i)
 
     # extract large cells for cell point localization
@@ -730,7 +574,7 @@ class SRSFilterLogic(object):
     ids = vtk.vtkIdFilter()
     adapt = vtk.vtkAdaptiveSubdivisionFilter()
     adapt.SetInputData(shrinkModelPD)
-    adapt.SetMaximumEdgeLength(RAYCASTOUTPUTEDGELENGTH)
+    adapt.SetMaximumEdgeLength(raycastOutputEdgeLength)
     adapt.SetMaximumTriangleArea(vtk.VTK_INT_MAX)
     adapt.SetMaximumNumberOfPasses(vtk.VTK_INT_MAX)
     adapt.Update()
@@ -741,7 +585,7 @@ class SRSFilterLogic(object):
 
     shrinkModelPD.DeepCopy(clean.GetOutput())
 
-    if largeCellIds.GetNumberOfIds() > 0 and RAYCASTMAXLENGTH > 0.0:
+    if largeCellIds.GetNumberOfIds() > 0 and raycastMaxLength > 0.0:
 
       # locate the points of previous large cells and write into largePointIds Set
       largeDistance = vtk.vtkImplicitPolyDataDistance()
@@ -789,7 +633,7 @@ class SRSFilterLogic(object):
               cell = shrinkModelPD.GetCell(i)
               pointId = cell.GetPointIds().GetId(p)
               normal = np.array(shrinkModelPD.GetPointData().GetArray('Normals').GetTuple(pointId)) * (-1)
-              vector = normal * RAYCASTMAXLENGTH # max Length greater 0, checked above
+              vector = normal * raycastMaxLength # max Length greater 0, checked above
 
               points = cell.GetPoints()
 
@@ -819,7 +663,7 @@ class SRSFilterLogic(object):
         # check result
         if vert_location_dict[i][0] == True:
           # check min length
-          if vert_location_dict[i][2] > RAYCASTMINLENGTH:
+          if vert_location_dict[i][2] > raycastMinLength:
             
             # check distance between two new locations with positive result
             cellIds = vtk.vtkIdList()
@@ -837,20 +681,21 @@ class SRSFilterLogic(object):
                 if pointId != i and vert_location_dict[pointId][0] == True:
                   point = vert_location_dict[pointId][1]
                   distance = np.linalg.norm(-vert_location_dict[i][1] + point)
-                  if distance < RAYCASTMAXHITDISTANCE:
+                  if distance < raycastMaxHitDistance:
                     shrinkModelPD.GetPoints().SetPoint(i, vert_location_dict[i][1])
                     pointChanged = True
-    if self.logCallback: self.logCallback('Raycast completed...')
 
-    if FILTERMODE == 'RAYCAST':
-      return polydataToImagedata(shrinkModelPD)
+    if filterMode == MODE_RAYCAST_SEG:
+      polydataToSegment(shrinkModelPD)
+      cleanup()
+      return True
     
     #endregion
 
     #region Shrinkwrap
 
-    for x in range(ITERATIONSSECONDSHRINKWRAP):
-      
+    for x in range(int(iterationsSecondShrinkwrap)):
+      if self.logCallback: self.logCallback('Shrinkwrapping %s/%s...' %(x+1, int(iterationsSecondShrinkwrap)))
       # remesh
       
       whiteImage = vtk.vtkImageData()
@@ -858,7 +703,7 @@ class SRSFilterLogic(object):
       shrinkModelPD.GetBounds(bounds)
 
       #spacing = [SPACINGSECONDREMESH]*3
-      spacing = inputImageData.GetSpacing()
+      spacing = inputSegmentLabelmap.GetSpacing()
       whiteImage.SetSpacing(spacing)
 
       dim = [0]*3
@@ -913,31 +758,32 @@ class SRSFilterLogic(object):
 
       shrinkModelPD.DeepCopy(reverse.GetOutput())
 
-      if x == (ITERATIONSSECONDSHRINKWRAP - 1):
-        if self.logCallback: self.logCallback('Second shrinkwrap completed...')
+      if x == (int(iterationsSecondShrinkwrap) - 1):
         break
 
       # shrinkwrap
 
       smoothFilter = vtk.vtkSmoothPolyDataFilter()
       smoothFilter.SetInputData(0, shrinkModelPD)
-      smoothFilter.SetInputData(1, inputDiscreteCubes.GetOutput())
+      smoothFilter.SetInputData(1, inputPolyData)
       smoothFilter.Update()
       
       shrinkModelPD.DeepCopy(smoothFilter.GetOutput())
 
-      if self.logCallback: self.logCallback('Second shrinkwrap: %s/%s' %(x+1, ITERATIONSSECONDSHRINKWRAP))
     
-    if FILTERMODE == 'DEEP':
-      return polydataToImagedata(shrinkModelPD)
+    if filterMode == MODE_DEEP_SEG:
+      polydataToSegment(shrinkModelPD)
+      cleanup()
+      return True
 
     #endregion
 
     # region Remove Caps
+    if self.logCallback: self.logCallback('Removing Caps...')
 
     # implicit distance, add point ids with larger distance to ids
     implicitDistance = vtk.vtkImplicitPolyDataDistance()
-    implicitDistance.SetInput(inputDiscreteCubes.GetOutput())
+    implicitDistance.SetInput(inputPolyData)
     
     # delete cells in great distance
     nonsolidPolyData = vtk.vtkPolyData()
@@ -951,20 +797,22 @@ class SRSFilterLogic(object):
         point = points.GetPoint(p)
         distance = implicitDistance.EvaluateFunction(point)
 
-        if abs(distance) > MAXMODELSDISTANCE:
+        if abs(distance) > maxModelsDistance:
           nonsolidPolyData.DeleteCell(c)
           break
 
     nonsolidPolyData.RemoveDeletedCells()
     shrinkModelPD.DeepCopy(nonsolidPolyData)
-    if self.logCallback: self.logCallback('Caps removed...')
 
-    if FILTERMODE == 'NONSOLID':
-      return addModel(shrinkModelPD)
+    if filterMode == MODE_NONMANIFOLD_MODEL:
+      polydataToModel(shrinkModelPD)
+      cleanup()
+      return True
 
     #endregion
 
     #region Solidification
+    if self.logCallback: self.logCallback('Solidifying...')
 
     # remove double vertices
     cleanPolyData = vtk.vtkCleanPolyData()
@@ -978,9 +826,9 @@ class SRSFilterLogic(object):
     normals.SplittingOff()
     normals.Update()
 
-    polydata = vtk.vtkPolyData()
-    polydata.DeepCopy(normals.GetOutput())
-    numberOfPoints = polydata.GetNumberOfPoints()
+    #shrinkModelPD = vtk.vtkPolyData()
+    shrinkModelPD.DeepCopy(normals.GetOutput())
+    numberOfPoints = shrinkModelPD.GetNumberOfPoints()
 
     # get boundary edges, used later
     featureEdges = vtk.vtkFeatureEdges()
@@ -998,17 +846,16 @@ class SRSFilterLogic(object):
 
     for pointID in range(numberOfPoints):
       cellIDs = vtk.vtkIdList()
-      polydata.GetPointCells(pointID, cellIDs)
+      shrinkModelPD.GetPointCells(pointID, cellIDs)
       normalsArray = []
 
       
       # ilterate through all cells/faces which contain point
-      for id in xrange(cellIDs.GetNumberOfIds()):
-        # faceData = []
+      for id in range(cellIDs.GetNumberOfIds()):
         n = []
-        n.append(polydata.GetCellData().GetArray('Normals').GetValue(cellIDs.GetId(id)*3))
-        n.append(polydata.GetCellData().GetArray('Normals').GetValue(cellIDs.GetId(id)*3 + 1))
-        n.append(polydata.GetCellData().GetArray('Normals').GetValue(cellIDs.GetId(id)*3 + 2))
+        n.append(shrinkModelPD.GetCellData().GetArray('Normals').GetValue(cellIDs.GetId(id)*3))
+        n.append(shrinkModelPD.GetCellData().GetArray('Normals').GetValue(cellIDs.GetId(id)*3 + 1))
+        n.append(shrinkModelPD.GetCellData().GetArray('Normals').GetValue(cellIDs.GetId(id)*3 + 2))
 
         normalsArray.append(np.array(n) * (-1))
 
@@ -1021,14 +868,14 @@ class SRSFilterLogic(object):
       dir_vec_norm = dir_vec / np.linalg.norm(dir_vec)
       proj_length = np.dot(dir_vec_norm, np.array(normalsArray[0]))
       dir_vec_finallenght = dir_vec_norm * proj_length
-      vertex_neu = np.array(polydata.GetPoint(pointID)) + (dir_vec_finallenght * THICKNESS)
+      vertex_neu = np.array(shrinkModelPD.GetPoint(pointID)) + (dir_vec_finallenght * solidificationThickness)
       
       # append point
       addingPoints.append(vertex_neu)
 
-    for cellID in range(polydata.GetNumberOfCells()):
+    for cellID in range(shrinkModelPD.GetNumberOfCells()):
       pointIDs = vtk.vtkIdList()
-      polydata.GetCellPoints(cellID, pointIDs)
+      shrinkModelPD.GetCellPoints(cellID, pointIDs)
 
       newPointIDs = vtk.vtkIdList()
       for i in reversed(range(pointIDs.GetNumberOfIds())):
@@ -1039,8 +886,8 @@ class SRSFilterLogic(object):
     doubleSurfacePoints = vtk.vtkPoints()
     doubleSurfacePolys = vtk.vtkCellArray()
 
-    doubleSurfacePoints.DeepCopy(polydata.GetPoints())
-    doubleSurfacePolys.DeepCopy(polydata.GetPolys())
+    doubleSurfacePoints.DeepCopy(shrinkModelPD.GetPoints())
+    doubleSurfacePolys.DeepCopy(shrinkModelPD.GetPolys())
 
     for p in addingPoints:
       doubleSurfacePoints.InsertNextPoint(p)
@@ -1085,14 +932,22 @@ class SRSFilterLogic(object):
     triangleFilter.SetInputData(manifoldPD)
     triangleFilter.Update()
 
-    shrinkModelPD.DeepCopy(triangleFilter.GetOutput())
-    if self.logCallback: self.logCallback('Model solidified...')
+    triangleFilter.GetOutput()
 
-    if FILTERMODE == 'SOLID':
-      return addModel(shrinkModelPD)
-
-    return polydataToImagedata(shrinkModelPD)
+    if filterMode == MODE_MANIFOLD_MODEL:
+      polydataToModel(triangleFilter.GetOutput())
+      cleanup()
+      return True
+    
+    polydataToSegment(triangleFilter.GetOutput())
+    #cleanup()
+    return True
     #endregion
       
-
+MODE_SHALLOW_SEG = 'SHALLOW_SEG'
+MODE_DEEP_SEG = 'DEEP_SEG'
+MODE_RAYCAST_SEG = 'RAYCAST'
+MODE_SURFACE_SEG = 'SURFACE_SEG'
+MODE_MANIFOLD_MODEL = 'MANIFOLD_MODEL'
+MODE_NONMANIFOLD_MODEL = 'NONMANIFOLD_MODEL'
 
