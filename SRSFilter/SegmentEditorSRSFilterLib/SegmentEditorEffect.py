@@ -69,10 +69,10 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
     self.filterModes.append({'button':self.raycastResultButton, 'name':'Raycast Result', 'id':'RAYCAST','default':False, 'output':'image'})
     self.hullDeepButton = None
     self.filterModes.append({'button':self.hullDeepButton, 'name':'Hull Deep', 'id':'DEEP','default':False, 'output':'image'})
-    self.nonmanifoldModelButton = None
-    self.filterModes.append({'button':self.nonmanifoldModelButton, 'name':'Solid Model', 'id':'NONSOLID','default':False, 'output':'model'})
     self.manifoldModelButton = None
-    self.filterModes.append({'button':self.manifoldModelButton, 'name':'Non-Manifold Model', 'id':'SOLID','default':False, 'output':'model'})
+    self.filterModes.append({'button':self.manifoldModelButton, 'name':'Solid Model', 'id':'SOLID','default':False, 'output':'model'})
+    self.nonmanifoldModelButton = None
+    self.filterModes.append({'button':self.nonmanifoldModelButton, 'name':'Non-Manifold Model', 'id':'NONSOLID','default':False, 'output':'model'})
 
   def clone(self):
     # It should not be necessary to modify this method
@@ -960,7 +960,6 @@ class SRSFilterLogic(object):
     if self.logCallback: self.logCallback('Caps removed...')
 
     if FILTERMODE == 'NONSOLID':
-      
       return addModel(shrinkModelPD)
 
     #endregion
