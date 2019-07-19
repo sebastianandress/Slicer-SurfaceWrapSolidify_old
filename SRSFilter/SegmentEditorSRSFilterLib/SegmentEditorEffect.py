@@ -40,7 +40,7 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
     self.maxModelsDistanceSlider = None
     self.parameters.append({'slider':self.maxModelsDistanceSlider, 'max':10, 'min':0.01,'default':0.5, 'interval':0.01, 'name':'Max. Models Distance:', 'id':'MaxModelsDistance','tooltip':''})
     self.solidificationThicknessSlider = None
-    self.parameters.append({'slider':self.solidificationThicknessSlider, 'max':20.0, 'min':0.1,'default':1.5, 'interval':0.1, 'name':'Solidification Thickness:', 'id':'SolidificationThickness','tooltip':''})
+    self.parameters.append({'slider':self.solidificationThicknessSlider, 'max':20.0, 'min':0.1,'default':1, 'interval':0.1, 'name':'Solidification Thickness:', 'id':'SolidificationThickness','tooltip':''})
     
     # filter modes
     self.filterModeTypeMap = {}
@@ -86,11 +86,6 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
 
 
   def setupOptionsFrame(self):
-    
-    # self.updatePreviewButton = qt.QPushButton("Update Preview")
-    # self.updatePreviewButton.objectName = self.__class__.__name__ + 'Update Preview'
-    # self.updatePreviewButton.setToolTip("Fill selected segment in regions that are in the specified intensity range.")
-    # self.scriptedEffect.addOptionsWidget(self.updatePreviewButton)
 
     self.applyButton = qt.QPushButton("Apply")
     self.applyButton.objectName = self.__class__.__name__ + 'Apply'
@@ -98,20 +93,6 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
     self.scriptedEffect.addOptionsWidget(self.applyButton)
 
     self.applyButton.connect('clicked()', self.onApply)
-    #self.updatePreviewButton.connect('clicked()', self.onUpdatePreview)
-
-    # setup parameters
-    for param in self.parameters:
-      param['slider'] = slicer.qMRMLSliderWidget()
-      param['slider'].setMRMLScene(slicer.mrmlScene)
-      #param['slider'].quantity = "length" # get unit, precision, etc. from MRML unit node
-      param['slider'].minimum = param['min']
-      param['slider'].maximum = param['max']
-      param['slider'].tickInterval = param['interval']
-      param['slider'].value = param['default']
-      param['slider'].setToolTip(param['tooltip'])
-      self.scriptedEffect.addLabeledOptionsWidget(param['name'], param['slider'])
-      param['slider'].connect('valueChanged(double)', self.updateMRMLFromGUI)
 
     # setup filter modes
     filterModeLayout = qt.QGridLayout()
@@ -133,6 +114,28 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
         columnCount += 1
 
     self.scriptedEffect.addLabeledOptionsWidget("Filter Mode:", filterModeLayout)
+
+    # setup parameters
+    advancedSettingsFrame = ctk.ctkCollapsibleGroupBox()
+    advancedSettingsFrame.objectName = 'advancedSettingsFrame'
+    advancedSettingsFrame.title = "Advanced Settings"
+    advancedSettingsFrame.collapsed = True
+    advancedSettingsFrame.setLayout(qt.QFormLayout())
+
+    for param in self.parameters:
+      param['slider'] = slicer.qMRMLSliderWidget()
+      param['slider'].setMRMLScene(slicer.mrmlScene)
+      #param['slider'].quantity = "length" # get unit, precision, etc. from MRML unit node
+      param['slider'].minimum = param['min']
+      param['slider'].maximum = param['max']
+      param['slider'].tickInterval = param['interval']
+      param['slider'].value = param['default']
+      param['slider'].setToolTip(param['tooltip'])
+      #self.scriptedEffect.addLabeledOptionsWidget(param['name'], param['slider'])
+      advancedSettingsFrame.layout().addRow(param['name'], param['slider'])
+      param['slider'].connect('valueChanged(double)', self.updateMRMLFromGUI)
+    
+    self.scriptedEffect.addOptionsWidget(advancedSettingsFrame)
 
 
   def createCursor(self, widget):
@@ -228,7 +231,7 @@ class SRSFilterLogic(object):
     raycastMaxLength=100,\
     raycastMinLength=0,\
     maxModelsDistance=0.5,\
-    solidificationThickness=1.5,\
+    solidificationThickness=1,\
     filterMode='SURFACE'):
 
     self.segLogic = slicer.vtkSlicerSegmentationsModuleLogic
@@ -252,39 +255,9 @@ class SRSFilterLogic(object):
     def polydataToModel(polydata):
       if self.logCallback: self.logCallback('Creating Model...')
 
-      decimator = vtk.vtkDecimatePro()
-      decimator.SetInputData(polydata)
-      decimator.SetFeatureAngle(60)
-      decimator.SplittingOff()
-      decimator.PreserveTopologyOn()
-      decimator.SetMaximumError(1)
-      decimator.SetTargetReduction(0.25)
-      decimator.ReleaseDataFlagOff()
-      decimator.Update()
+      smoothPD = smoothPolyData(polydata)
 
-      smootherSinc = vtk.vtkWindowedSincPolyDataFilter()
-      smootherSinc.SetPassBand(0.1)
-      smootherSinc.SetInputConnection(decimator.GetOutputPort())
-      smootherSinc.SetNumberOfIterations(10)
-      smootherSinc.FeatureEdgeSmoothingOff()
-      smootherSinc.BoundarySmoothingOff()
-      smootherSinc.ReleaseDataFlagOn()
-      smootherSinc.Update()
-
-      # if self.transformMatrix:
-      #   mat = vtk.vtkMatrix4x4()
-      #   transform = vtk.vtkTransform()
-      #   transform.SetMatrix(self.transformMatrix)
-
-      #   transformFilter=vtk.vtkTransformPolyDataFilter()
-      #   transformFilter.SetTransform(transform)
-      #   transformFilter.SetInputData(smoothedPD)
-      #   transformFilter.Update()
-
-      #   modelNode = modelsLogic.AddModel(transformFilter.GetOutput())
-      
-      # else:
-      modelNode = modelsLogic.AddModel(smootherSinc.GetOutput)
+      modelNode = self.modelsLogic.AddModel(smoothPD)
         
       seg = self.scriptedEffect.parameterSetNode().GetSegmentationNode().GetSegmentation().GetSegment(self.scriptedEffect.parameterSetNode().GetSelectedSegmentID())
       modelNode.GetDisplayNode().SetColor(seg.GetColor())
@@ -292,17 +265,17 @@ class SRSFilterLogic(object):
 
       # outputImageData.DeepCopy(inputSegmentLabelmap)
       return True
-      
 
     def polydataToSegment(polydata):
       if self.logCallback: self.logCallback('Updating Segmentation...')
 
-      tempOutputModelNode = self.modelsLogic.AddModel(polydata)
+      smoothPD = smoothPolyData(polydata)
+
+      tempOutputModelNode = self.modelsLogic.AddModel(smoothPD)
       tempSegment = self.segLogic.CreateSegmentFromModelNode(tempOutputModelNode,segmentationNode)
       sid = segmentationNode.GetSegmentation().GetSegmentIdBySegment(tempSegment)
       segmentationNode.GetSegmentation().AddSegment(tempSegment)
       segmentationNode.CreateClosedSurfaceRepresentation()
-      
       labelRep = tempSegment.GetRepresentation(vtkSegmentationCorePython.vtkSegmentationConverter.GetSegmentationBinaryLabelmapRepresentationName())
       self.segLogic.SetBinaryLabelmapToSegment(labelRep, segmentationNode, segmentID, self.segLogic.MODE_REPLACE, labelRep.GetExtent())
 
@@ -317,61 +290,6 @@ class SRSFilterLogic(object):
       
       if self.logCallback: self.logCallback('')
 
-    def polydataToImagedata(polydata):
-
-      outputImageData.DeepCopy(inputSegmentLabelmap)
-      
-      pol2stenc = vtk.vtkPolyDataToImageStencil()
-      pol2stenc.SetInputData(polydata)
-      pol2stenc.SetOutputOrigin(inputSegmentLabelmap.GetOrigin())
-      pol2stenc.SetOutputSpacing(inputSegmentLabelmap.GetSpacing())
-      pol2stenc.SetOutputWholeExtent(inputSegmentLabelmap.GetExtent())
-      pol2stenc.Update()
-
-      imgstenc = vtk.vtkImageStencil()
-      imgstenc.SetInputData(outputImageData)
-      imgstenc.SetStencilConnection(pol2stenc.GetOutputPort())
-      imgstenc.ReverseStencilOn()
-      imgstenc.SetBackgroundValue(1)
-      imgstenc.Update()
-
-      revimgstenc = vtk.vtkImageStencil()
-      revimgstenc.SetInputData(imgstenc.GetOutput())
-      revimgstenc.SetStencilConnection(pol2stenc.GetOutputPort())
-      revimgstenc.ReverseStencilOff()
-      revimgstenc.SetBackgroundValue(0)
-      revimgstenc.Update()
-
-      outputImageData.DeepCopy(revimgstenc.GetOutput())
-      
-      return outputImageData
-
-    def addModel(polydata):
-      
-      modelsLogic = slicer.modules.models.logic()
-      smoothedPD = smoothPolyData(polydata)
-
-      if self.transformMatrix:
-        mat = vtk.vtkMatrix4x4()
-        transform = vtk.vtkTransform()
-        transform.SetMatrix(self.transformMatrix)
-
-        transformFilter=vtk.vtkTransformPolyDataFilter()
-        transformFilter.SetTransform(transform)
-        transformFilter.SetInputData(smoothedPD)
-        transformFilter.Update()
-
-        modelNode = modelsLogic.AddModel(transformFilter.GetOutput())
-      
-      else:
-        modelNode = modelsLogic.AddModel(smoothedPD)
-        
-      seg = self.scriptedEffect.parameterSetNode().GetSegmentationNode().GetSegmentation().GetSegment(self.scriptedEffect.parameterSetNode().GetSelectedSegmentID())
-      modelNode.GetDisplayNode().SetColor(seg.GetColor())
-      modelNode.SetName(seg.GetName())
-
-      outputImageData.DeepCopy(inputSegmentLabelmap)
-      return modelNode
 
     def smoothPolyData(polydata):
       decimator = vtk.vtkDecimatePro()
@@ -650,7 +568,7 @@ class SRSFilterLogic(object):
               subId = vtk.mutable(0)
               cellLocator.IntersectWithLine(a0, a1, tol, t, glo, par, subId, cellId, cell)
 
-              loc_new = np.array(glo) - (normal * 0.5)
+              loc_new = np.array(glo)# - (normal * offsetFirstShrinkwrap)
               length = np.linalg.norm(glo - a0)
               res = False
               if np.linalg.norm(glo) != 0:
@@ -687,6 +605,7 @@ class SRSFilterLogic(object):
 
     if filterMode == MODE_RAYCAST_SEG:
       polydataToSegment(shrinkModelPD)
+      polydataToModel(shrinkModelPD)
       cleanup()
       return True
     
@@ -767,7 +686,6 @@ class SRSFilterLogic(object):
       smoothFilter.SetInputData(0, shrinkModelPD)
       smoothFilter.SetInputData(1, inputPolyData)
       smoothFilter.Update()
-      
       shrinkModelPD.DeepCopy(smoothFilter.GetOutput())
 
     
@@ -778,7 +696,7 @@ class SRSFilterLogic(object):
 
     #endregion
 
-    # region Remove Caps
+    #region Remove Caps
     if self.logCallback: self.logCallback('Removing Caps...')
 
     # implicit distance, add point ids with larger distance to ids
@@ -932,17 +850,22 @@ class SRSFilterLogic(object):
     triangleFilter.SetInputData(manifoldPD)
     triangleFilter.Update()
 
-    triangleFilter.GetOutput()
+    #endregion
+
 
     if filterMode == MODE_MANIFOLD_MODEL:
       polydataToModel(triangleFilter.GetOutput())
       cleanup()
       return True
     
-    polydataToSegment(triangleFilter.GetOutput())
-    #cleanup()
-    return True
-    #endregion
+    if filterMode == MODE_SURFACE_SEG:
+      polydataToSegment(shrinkModelPD)
+      cleanup()
+      return True
+    
+    logging.error('No or unknown filter mode.')
+    return False
+
       
 MODE_SHALLOW_SEG = 'SHALLOW_SEG'
 MODE_DEEP_SEG = 'DEEP_SEG'
