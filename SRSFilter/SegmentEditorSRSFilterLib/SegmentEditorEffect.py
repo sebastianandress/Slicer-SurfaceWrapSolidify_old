@@ -11,7 +11,7 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
 
   def __init__(self, scriptedEffect):
     scriptedEffect.name = 'SRS-Filter'
-    scriptedEffect.perSegment = False # this effect operates on all segments at once (not on a single selected segment)
+    scriptedEffect.perSegment = True # this effect operates on all segments at once (not on a single selected segment)
     AbstractScriptedSegmentEditorEffect.__init__(self, scriptedEffect)
 
     self.logic = SRSFilterLogic(scriptedEffect)
@@ -20,27 +20,29 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
     # parameters
     self.parameters = []
     self.offsetFirstShrinkwrapSlider = None
-    self.parameters.append({'slider':self.offsetFirstShrinkwrapSlider, 'max':50.0, 'min':1.0,'default':15.0, 'interval':0.1, 'name':'Offset First Shrinkwrap:', 'id':'OffsetFirstShrinkwrap','tooltip':''})
+    self.parameters.append({'slider':self.offsetFirstShrinkwrapSlider, 'max':50.0, 'min':1.0,'default':15.0, 'step':0.1, 'suffix':' mm', 'name':'Offset First Shrinkwrap:', 'id':'OffsetFirstShrinkwrap','tooltip':''})
     self.spacingFirstRemeshSlider = None
-    self.parameters.append({'slider':self.spacingFirstRemeshSlider, 'max':50.0, 'min':0.1,'default':10.0, 'interval':0.01, 'name':'Spacing First Remesh:', 'id':'SpacingFirstRemesh','tooltip':''})
+    self.parameters.append({'slider':self.spacingFirstRemeshSlider, 'max':50.0, 'min':0.1,'default':3.0, 'step':0.1, 'suffix':' mm^3', 'name':'Spacing First Remesh:', 'id':'SpacingFirstRemesh','tooltip':''})
+    self.spacingSecondShrinkwrapSlider = None
+    self.parameters.append({'slider':self.spacingSecondShrinkwrapSlider, 'max':10, 'min':1,'default':1.0, 'step':1, 'suffix':' mm^s3', 'name':'Spacing Second Shrinkwrap:', 'id':'SpacingSecondShrinkwrap','tooltip':''})
     self.iterationsFirstShrinkwrapSlider = None
-    self.parameters.append({'slider':self.iterationsFirstShrinkwrapSlider, 'max':10, 'min':1,'default':3, 'interval':1, 'name':'Iterations First Shrinkwrap:', 'id':'IterationsFirstShrinkwrap','tooltip':''})
+    self.parameters.append({'slider':self.iterationsFirstShrinkwrapSlider, 'max':10, 'min':1,'default':3, 'step':1, 'suffix':'', 'name':'Iterations First Shrinkwrap:', 'id':'IterationsFirstShrinkwrap','tooltip':''})
     self.iterationsSecondShrinkwrapSlider = None
-    self.parameters.append({'slider':self.iterationsSecondShrinkwrapSlider, 'max':10, 'min':1,'default':5, 'interval':1, 'name':'Iterations Second Shrinkwrap:', 'id':'IterationsSecondShrinkwrap','tooltip':''})
+    self.parameters.append({'slider':self.iterationsSecondShrinkwrapSlider, 'max':10, 'min':1,'default':5, 'step':1, 'suffix':'', 'name':'Iterations Second Shrinkwrap:', 'id':'IterationsSecondShrinkwrap','tooltip':''})
     self.raycastSearchEdgeLengthSlider = None
-    self.parameters.append({'slider':self.raycastSearchEdgeLengthSlider, 'max':100.0, 'min':0.1,'default':20.0, 'interval':0.1, 'name':'Raycast Search Edge Length:', 'id':'RaycastSearchEdgeLength','tooltip':''})
+    self.parameters.append({'slider':self.raycastSearchEdgeLengthSlider, 'max':100.0, 'min':0.1,'default':20.0, 'step':0.1, 'suffix':' mm', 'name':'Raycast Search Edge Length:', 'id':'RaycastSearchEdgeLength','tooltip':''})
     self.raycastOutputEdgeLengthSlider = None
-    self.parameters.append({'slider':self.raycastOutputEdgeLengthSlider, 'max':100.0, 'min':0.1,'default':2.0, 'interval':0.1, 'name':'Raycast Output Edge Length:', 'id':'RaycastOutputEdgeLength','tooltip':''})
+    self.parameters.append({'slider':self.raycastOutputEdgeLengthSlider, 'max':100.0, 'min':0.1,'default':2.0, 'step':0.1, 'suffix':' mm', 'name':'Raycast Output Edge Length:', 'id':'RaycastOutputEdgeLength','tooltip':''})
     self.raycastMaxHitDistanceSlider = None
-    self.parameters.append({'slider':self.raycastMaxHitDistanceSlider, 'max':50.0, 'min':0.1,'default':2.0, 'interval':0.01, 'name':'Raycast Max. Hit Distance:', 'id':'RaycastMaxHitDistance','tooltip':''})
+    self.parameters.append({'slider':self.raycastMaxHitDistanceSlider, 'max':50.0, 'min':0.1,'default':2.0, 'step':0.01, 'suffix':' mm', 'name':'Raycast Max. Hit Distance:', 'id':'RaycastMaxHitDistance','tooltip':''})
     self.raycastMaxLengthSlider = None
-    self.parameters.append({'slider':self.raycastMaxLengthSlider, 'max':1000.0, 'min':0.1,'default':100.0, 'interval':0.1, 'name':'Raycast Max. Length:', 'id':'RaycastMaxLength','tooltip':''})
+    self.parameters.append({'slider':self.raycastMaxLengthSlider, 'max':1000.0, 'min':0.1,'default':100.0, 'step':0.1, 'suffix':' mm', 'name':'Raycast Max. Length:', 'id':'RaycastMaxLength','tooltip':''})
     self.raycastMinLengthSlider = None
-    self.parameters.append({'slider':self.raycastMinLengthSlider, 'max':1000.0, 'min':0.0,'default':0.0, 'interval':0.1, 'name':'Raycast Min. Length:', 'id':'RaycastMinLength','tooltip':''})
+    self.parameters.append({'slider':self.raycastMinLengthSlider, 'max':1000.0, 'min':0.0,'default':0.0, 'step':0.1, 'suffix':' mm', 'name':'Raycast Min. Length:', 'id':'RaycastMinLength','tooltip':''})
     self.maxModelsDistanceSlider = None
-    self.parameters.append({'slider':self.maxModelsDistanceSlider, 'max':10, 'min':0.01,'default':0.5, 'interval':0.01, 'name':'Max. Models Distance:', 'id':'MaxModelsDistance','tooltip':''})
+    self.parameters.append({'slider':self.maxModelsDistanceSlider, 'max':10, 'min':0.01,'default':0.7, 'step':0.01, 'suffix':' mm', 'name':'Max. Models Distance:', 'id':'MaxModelsDistance','tooltip':''})
     self.solidificationThicknessSlider = None
-    self.parameters.append({'slider':self.solidificationThicknessSlider, 'max':20.0, 'min':0.1,'default':1, 'interval':0.1, 'name':'Solidification Thickness:', 'id':'SolidificationThickness','tooltip':''})
+    self.parameters.append({'slider':self.solidificationThicknessSlider, 'max':20.0, 'min':0.1,'default':1.5, 'suffix':' mm', 'step':0.1, 'name':'Solidification Thickness:', 'id':'SolidificationThickness','tooltip':''})
     
     # filter modes
     self.filterModeTypeMap = {}
@@ -128,8 +130,9 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
       #param['slider'].quantity = "length" # get unit, precision, etc. from MRML unit node
       param['slider'].minimum = param['min']
       param['slider'].maximum = param['max']
-      param['slider'].tickInterval = param['interval']
+      param['slider'].singleStep = param['step']
       param['slider'].value = param['default']
+      param['slider'].suffix = param['suffix']
       param['slider'].setToolTip(param['tooltip'])
       #self.scriptedEffect.addLabeledOptionsWidget(param['name'], param['slider'])
       advancedSettingsFrame.layout().addRow(param['name'], param['slider'])
@@ -223,6 +226,7 @@ class SRSFilterLogic(object):
     segmentationNode, segmentID,\
     offsetFirstShrinkwrap=15,\
     spacingFirstRemesh=10,\
+    spacingSecondRemesh=1,\
     iterationsFirstShrinkwrap=3,\
     iterationsSecondShrinkwrap=5,\
     raycastSearchEdgeLength=20,\
@@ -230,57 +234,44 @@ class SRSFilterLogic(object):
     raycastMaxHitDistance=2,\
     raycastMaxLength=100,\
     raycastMinLength=0,\
-    maxModelsDistance=0.5,\
-    solidificationThickness=1,\
+    maxModelsDistance=0.7,\
+    solidificationThickness=1.5,\
     filterMode='SURFACE'):
+    
 
     self.segLogic = slicer.vtkSlicerSegmentationsModuleLogic
     self.modelsLogic = slicer.modules.models.logic()
 
     tempNodes = []
 
-    # offsetFirstShrinkwrap = 15# self.scriptedEffect.doubleParameter('OffsetFirstShrinkwrap')
-    # spacingFirstRemesh = 10#self.scriptedEffect.doubleParameter('SpacingFirstRemesh')
-    # iterationsFirstShrinkwrap = 3#int(self.scriptedEffect.doubleParameter('IterationsFirstShrinkwrap'))
-    # iterationsSecondShrinkwrap = 5#int(self.scriptedEffect.doubleParameter('IterationsSecondShrinkwrap'))
-    # raycastSearchEdgeLength = 20#self.scriptedEffect.doubleParameter('RaycastSearchEdgeLength')
-    # raycastOutputEdgeLength = 2#self.scriptedEffect.doubleParameter('RaycastOutputEdgeLength')
-    # raycastMaxHitDistance = 2#self.scriptedEffect.doubleParameter('RaycastMaxHitDistance')
-    # raycastMaxLength = 100#self.scriptedEffect.doubleParameter('RaycastMaxLength')
-    # raycastMinLength = 0#self.scriptedEffect.doubleParameter('RaycastMinLength')
-    # maxModelsDistance = 0.5#elf.scriptedEffect.doubleParameter('MaxModelsDistance')
-    # solidificationThickness = 1.5#self.scriptedEffect.doubleParameter('SolidificationThickness')
-    # filterMode = 'SURFACE'#self.scriptedEffect.parameter('Filtermode')
-
     def polydataToModel(polydata):
       if self.logCallback: self.logCallback('Creating Model...')
 
-      smoothPD = smoothPolyData(polydata)
+      smoothPD = smoothPolydata(polydata)
 
       modelNode = self.modelsLogic.AddModel(smoothPD)
         
       seg = self.scriptedEffect.parameterSetNode().GetSegmentationNode().GetSegmentation().GetSegment(self.scriptedEffect.parameterSetNode().GetSelectedSegmentID())
       modelNode.GetDisplayNode().SetColor(seg.GetColor())
       modelNode.SetName(seg.GetName())
+      modelNode.GetDisplayNode().SliceIntersectionVisibilityOn()
 
-      # outputImageData.DeepCopy(inputSegmentLabelmap)
       return True
 
     def polydataToSegment(polydata):
       if self.logCallback: self.logCallback('Updating Segmentation...')
 
-      smoothPD = smoothPolyData(polydata)
+      smoothPD = smoothPolydata(polydata)
 
       tempOutputModelNode = self.modelsLogic.AddModel(smoothPD)
-      tempSegment = self.segLogic.CreateSegmentFromModelNode(tempOutputModelNode,segmentationNode)
-      sid = segmentationNode.GetSegmentation().GetSegmentIdBySegment(tempSegment)
-      segmentationNode.GetSegmentation().AddSegment(tempSegment)
-      segmentationNode.CreateClosedSurfaceRepresentation()
-      labelRep = tempSegment.GetRepresentation(vtkSegmentationCorePython.vtkSegmentationConverter.GetSegmentationBinaryLabelmapRepresentationName())
-      self.segLogic.SetBinaryLabelmapToSegment(labelRep, segmentationNode, segmentID, self.segLogic.MODE_REPLACE, labelRep.GetExtent())
-
-      segmentationNode.GetSegmentation().RemoveSegment(tempSegment)
       tempNodes.append(tempOutputModelNode)
+      tempSegment = self.segLogic.CreateSegmentFromModelNode(tempOutputModelNode,segmentationNode)
+      col = segmentationNode.GetSegmentation().GetSegment(segmentID).GetColor()
+      name = segmentationNode.GetSegmentation().GetSegment(segmentID).GetName()
+      segmentationNode.GetSegmentation().GetSegment(segmentID).DeepCopy(tempSegment)
+      segmentationNode.GetSegmentation().GetSegment(segmentID).SetColor(col)
+      segmentationNode.GetSegmentation().GetSegment(segmentID).SetName(name)
+
       return True
 
     def cleanup():
@@ -290,8 +281,67 @@ class SRSFilterLogic(object):
       
       if self.logCallback: self.logCallback('')
 
+    def remeshPolydata(polydata, spacing):
+      whiteImage = vtk.vtkImageData()
+      bounds = [0]*6
+      polydata.GetBounds(bounds)
 
-    def smoothPolyData(polydata):
+      #spacing = [spacing]*3
+      whiteImage.SetSpacing(spacing)
+
+      dim = [0]*3
+      for i in range(3):
+        dim[i] = int(math.ceil((bounds[i * 2 + 1] - bounds[i * 2]) / spacing[i])) + 1
+        if (dim[i] < 1):
+          dim[i] = 1
+      whiteImage.SetDimensions(dim)
+      #whiteImage.SetExtent(0, dim[0] - 1, 0, dim[1] - 1, 0, dim[2] - 1)
+      whiteImage.SetExtent(0, dim[0], 0, dim[1], 0, dim[2])
+      origin = [0]*3
+
+      origin[0] = bounds[0]# + spacing[0] / 2
+      origin[1] = bounds[2]# + spacing[1] / 2
+      origin[2] = bounds[4]# + spacing[2] / 2
+      whiteImage.SetOrigin(origin)
+
+      whiteImage.AllocateScalars(vtk.VTK_UNSIGNED_CHAR,1)
+
+      pol2stenc = vtk.vtkPolyDataToImageStencil()
+      pol2stenc.SetInputData(polydata)
+
+      pol2stenc.SetOutputOrigin(origin)
+      pol2stenc.SetOutputSpacing(spacing)
+      pol2stenc.SetOutputWholeExtent(whiteImage.GetExtent())
+      pol2stenc.Update()
+
+      imgstenc = vtk.vtkImageStencil()
+      imgstenc.SetInputData(whiteImage)
+      imgstenc.SetStencilConnection(pol2stenc.GetOutputPort())
+      imgstenc.ReverseStencilOn()
+      imgstenc.SetBackgroundValue(1)
+      imgstenc.Update()
+
+      revimgstenc = vtk.vtkImageStencil()
+      revimgstenc.SetInputData(imgstenc.GetOutput())
+      revimgstenc.SetStencilConnection(pol2stenc.GetOutputPort())
+      revimgstenc.ReverseStencilOff()
+      revimgstenc.SetBackgroundValue(0)
+      revimgstenc.Update()
+
+      discreteCubes = vtk.vtkDiscreteMarchingCubes()
+      discreteCubes.SetInputConnection(revimgstenc.GetOutputPort())
+      discreteCubes.GenerateValues(1,0,0)
+      discreteCubes.Update()
+
+      reverse = vtk.vtkReverseSense()
+      reverse.SetInputConnection(discreteCubes.GetOutputPort())
+      reverse.ReverseCellsOn()
+      reverse.ReverseNormalsOn()
+      reverse.Update()
+
+      return reverse.GetOutput()
+
+    def smoothPolydata(polydata):
       decimator = vtk.vtkDecimatePro()
       decimator.SetInputData(polydata)
       decimator.SetFeatureAngle(60)
@@ -316,15 +366,12 @@ class SRSFilterLogic(object):
 
     if self.logCallback: self.logCallback('Filtering process started...')
 
-    # tempInputModelNode = slicer.vtkMRMLModelNode()
-    # slicer.mrmlScene.AddNode(tempInputModelNode)
-    # tempNodes.append(tempInputModelNode)
-    # self.segLogic.ExportSegmentToRepresentationNode(segmentationNode.GetSegmentation().GetSegment(segmentID), tempInputModelNode)
     segmentationNode.CreateClosedSurfaceRepresentation()
     segmentationNode.CreateBinaryLabelmapRepresentation()
     segment = segmentationNode.GetSegmentation().GetSegment(segmentID)
-    inputSegmentLabelmap = segment.GetRepresentation(vtkSegmentationCorePython.vtkSegmentationConverter.GetSegmentationBinaryLabelmapRepresentationName())
     inputPolyData = segment.GetRepresentation(vtkSegmentationCorePython.vtkSegmentationConverter.GetSegmentationClosedSurfaceRepresentationName())
+    inputSegmentLabelmap = segment.GetRepresentation(vtkSegmentationCorePython.vtkSegmentationConverter.GetSegmentationBinaryLabelmapRepresentationName())
+
 
     #region create sphere
     bounds = np.array([0]*6)
@@ -358,6 +405,7 @@ class SRSFilterLogic(object):
   
     for x in range(int(iterationsFirstShrinkwrap)):
       
+      # shrinkwrap
       if self.logCallback: self.logCallback('Shrinkwrapping %s/%s...' %(x+1, int(iterationsFirstShrinkwrap)))
       
       points = shrinkModelPD.GetPoints()
@@ -388,65 +436,8 @@ class SRSFilterLogic(object):
         break
 
       # remesh
-      
-      whiteImage = vtk.vtkImageData()
-      bounds = [0]*6
-      shrinkModelPD.GetBounds(bounds)
-
-      spacing = [spacingFirstRemesh]*3
-      whiteImage.SetSpacing(spacing)
-
-      dim = [0]*3
-      for i in range(3):
-        dim[i] = int(math.ceil((bounds[i * 2 + 1] - bounds[i * 2]) / spacing[i])) + 1
-        if (dim[i] < 1):
-          dim[i] = 1
-      whiteImage.SetDimensions(dim)
-      #whiteImage.SetExtent(0, dim[0] - 1, 0, dim[1] - 1, 0, dim[2] - 1)
-      whiteImage.SetExtent(0, dim[0], 0, dim[1], 0, dim[2])
-      origin = [0]*3
-
-      origin[0] = bounds[0]# + spacing[0] / 2
-      origin[1] = bounds[2]# + spacing[1] / 2
-      origin[2] = bounds[4]# + spacing[2] / 2
-      whiteImage.SetOrigin(origin)
-
-      whiteImage.AllocateScalars(vtk.VTK_UNSIGNED_CHAR,1)
-
-      pol2stenc = vtk.vtkPolyDataToImageStencil()
-      pol2stenc.SetInputData(shrinkModelPD)
-
-      pol2stenc.SetOutputOrigin(origin)
-      pol2stenc.SetOutputSpacing(spacing)
-      pol2stenc.SetOutputWholeExtent(whiteImage.GetExtent())
-      pol2stenc.Update()
-
-      imgstenc = vtk.vtkImageStencil()
-      imgstenc.SetInputData(whiteImage)
-      imgstenc.SetStencilConnection(pol2stenc.GetOutputPort())
-      imgstenc.ReverseStencilOn()
-      imgstenc.SetBackgroundValue(1)
-      imgstenc.Update()
-
-      revimgstenc = vtk.vtkImageStencil()
-      revimgstenc.SetInputData(imgstenc.GetOutput())
-      revimgstenc.SetStencilConnection(pol2stenc.GetOutputPort())
-      revimgstenc.ReverseStencilOff()
-      revimgstenc.SetBackgroundValue(0)
-      revimgstenc.Update()
-
-      discreteCubes = vtk.vtkDiscreteMarchingCubes()
-      discreteCubes.SetInputConnection(revimgstenc.GetOutputPort())
-      discreteCubes.GenerateValues(1,0,0)
-      discreteCubes.Update()
-
-      reverse = vtk.vtkReverseSense()
-      reverse.SetInputConnection(discreteCubes.GetOutputPort())
-      reverse.ReverseCellsOn()
-      reverse.ReverseNormalsOn()
-      reverse.Update()
-
-      shrinkModelPD.DeepCopy(reverse.GetOutput())
+      if self.logCallback: self.logCallback('Remeshing %s/%s...' %(x+1, int(iterationsSecondShrinkwrap)))
+      shrinkModelPD.DeepCopy(remeshPolydata(shrinkModelPD, [spacingFirstRemesh]*3))
     
     if filterMode == MODE_SHALLOW_SEG:
       polydataToSegment(shrinkModelPD)
@@ -605,7 +596,6 @@ class SRSFilterLogic(object):
 
     if filterMode == MODE_RAYCAST_SEG:
       polydataToSegment(shrinkModelPD)
-      polydataToModel(shrinkModelPD)
       cleanup()
       return True
     
@@ -613,74 +603,17 @@ class SRSFilterLogic(object):
 
     #region Shrinkwrap
 
-    for x in range(int(iterationsSecondShrinkwrap)):
-      if self.logCallback: self.logCallback('Shrinkwrapping %s/%s...' %(x+1, int(iterationsSecondShrinkwrap)))
-      # remesh
+    for x in range(int(iterationsSecondShrinkwrap)+1):
       
-      whiteImage = vtk.vtkImageData()
-      bounds = [0]*6
-      shrinkModelPD.GetBounds(bounds)
+      # remesh
+      if self.logCallback: self.logCallback('Remeshing %s/%s...' %(x+1, int(iterationsSecondShrinkwrap)+1))
+      shrinkModelPD.DeepCopy(remeshPolydata(shrinkModelPD, [spacingSecondRemesh]*3))
 
-      #spacing = [SPACINGSECONDREMESH]*3
-      spacing = inputSegmentLabelmap.GetSpacing()
-      whiteImage.SetSpacing(spacing)
-
-      dim = [0]*3
-      for i in range(3):
-        dim[i] = int(math.ceil((bounds[i * 2 + 1] - bounds[i * 2]) / spacing[i])) + 1
-        if (dim[i] < 1):
-          dim[i] = 1
-      whiteImage.SetDimensions(dim)
-      #whiteImage.SetExtent(0, dim[0] - 1, 0, dim[1] - 1, 0, dim[2] - 1)
-      whiteImage.SetExtent(0, dim[0], 0, dim[1], 0, dim[2])
-      origin = [0]*3
-
-      origin[0] = bounds[0]# + spacing[0] / 2
-      origin[1] = bounds[2]# + spacing[1] / 2
-      origin[2] = bounds[4]# + spacing[2] / 2
-      whiteImage.SetOrigin(origin)
-
-      whiteImage.AllocateScalars(vtk.VTK_UNSIGNED_CHAR,1)
-
-      pol2stenc = vtk.vtkPolyDataToImageStencil()
-      pol2stenc.SetInputData(shrinkModelPD)
-
-      pol2stenc.SetOutputOrigin(origin)
-      pol2stenc.SetOutputSpacing(spacing)
-      pol2stenc.SetOutputWholeExtent(whiteImage.GetExtent())
-      pol2stenc.Update()
-
-      imgstenc = vtk.vtkImageStencil()
-      imgstenc.SetInputData(whiteImage)
-      imgstenc.SetStencilConnection(pol2stenc.GetOutputPort())
-      imgstenc.ReverseStencilOn()
-      imgstenc.SetBackgroundValue(1)
-      imgstenc.Update()
-
-      revimgstenc = vtk.vtkImageStencil()
-      revimgstenc.SetInputData(imgstenc.GetOutput())
-      revimgstenc.SetStencilConnection(pol2stenc.GetOutputPort())
-      revimgstenc.ReverseStencilOff()
-      revimgstenc.SetBackgroundValue(0)
-      revimgstenc.Update()
-
-      discreteCubes = vtk.vtkDiscreteMarchingCubes()
-      discreteCubes.SetInputConnection(revimgstenc.GetOutputPort())
-      discreteCubes.GenerateValues(1,0,0)
-      discreteCubes.Update()
-
-      reverse = vtk.vtkReverseSense()
-      reverse.SetInputConnection(discreteCubes.GetOutputPort())
-      reverse.ReverseCellsOn()
-      reverse.ReverseNormalsOn()
-      reverse.Update()
-
-      shrinkModelPD.DeepCopy(reverse.GetOutput())
-
-      if x == (int(iterationsSecondShrinkwrap) - 1):
+      if x == int(iterationsSecondShrinkwrap):
         break
 
       # shrinkwrap
+      if self.logCallback: self.logCallback('Shrinkwrapping %s/%s...' %(x+1, int(iterationsSecondShrinkwrap)))
 
       smoothFilter = vtk.vtkSmoothPolyDataFilter()
       smoothFilter.SetInputData(0, shrinkModelPD)
@@ -859,7 +792,7 @@ class SRSFilterLogic(object):
       return True
     
     if filterMode == MODE_SURFACE_SEG:
-      polydataToSegment(shrinkModelPD)
+      polydataToSegment(triangleFilter.GetOutput())
       cleanup()
       return True
     
