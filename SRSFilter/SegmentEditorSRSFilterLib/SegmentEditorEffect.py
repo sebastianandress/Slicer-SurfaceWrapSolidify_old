@@ -20,35 +20,35 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
     # parameters
     self.parameters = []
     self.offsetFirstShrinkwrapSlider = None
-    self.parameters.append({'slider':self.offsetFirstShrinkwrapSlider, 'max':50.0, 'min':1.0,'default':15.0, 'step':0.1, 'suffix':' mm', 'name':'Offset First Shrinkwrap:', 'id':'OffsetFirstShrinkwrap','tooltip':''})
+    self.parameters.append({'slider':self.offsetFirstShrinkwrapSlider, 'max':50.0, 'min':1.0,'default':15.0, 'step':0.1, 'suffix':' mm', 'name':'Offset First Shrinkwrap:', 'id':ARG_OFFSETFIRSTSHRINKWRAP,'tooltip':''})
     self.spacingFirstRemeshSlider = None
-    self.parameters.append({'slider':self.spacingFirstRemeshSlider, 'max':50.0, 'min':0.1,'default':3.0, 'step':0.1, 'suffix':' mm^3', 'name':'Spacing First Remesh:', 'id':'SpacingFirstRemesh','tooltip':''})
+    self.parameters.append({'slider':self.spacingFirstRemeshSlider, 'max':50.0, 'min':0.1,'default':10.0, 'step':0.1, 'suffix':' mm^3', 'name':'Spacing First Remesh:', 'id':ARG_SPACINGFIRSTREMESH,'tooltip':''})
     self.spacingSecondShrinkwrapSlider = None
-    self.parameters.append({'slider':self.spacingSecondShrinkwrapSlider, 'max':10, 'min':1,'default':1.0, 'step':1, 'suffix':' mm^s3', 'name':'Spacing Second Shrinkwrap:', 'id':'SpacingSecondShrinkwrap','tooltip':''})
+    self.parameters.append({'slider':self.spacingSecondShrinkwrapSlider, 'max':10, 'min':1,'default':1.0, 'step':1, 'suffix':' mm^s3', 'name':'Spacing Second Shrinkwrap:', 'id':ARG_SPACINGSECONDREMESH,'tooltip':''})
     self.iterationsFirstShrinkwrapSlider = None
-    self.parameters.append({'slider':self.iterationsFirstShrinkwrapSlider, 'max':10, 'min':1,'default':3, 'step':1, 'suffix':'', 'name':'Iterations First Shrinkwrap:', 'id':'IterationsFirstShrinkwrap','tooltip':''})
+    self.parameters.append({'slider':self.iterationsFirstShrinkwrapSlider, 'max':10, 'min':1,'default':3, 'step':1, 'suffix':'', 'name':'Iterations First Shrinkwrap:', 'id':ARG_ITERATIONSFIRSTSHRINKWRAP,'tooltip':''})
     self.iterationsSecondShrinkwrapSlider = None
-    self.parameters.append({'slider':self.iterationsSecondShrinkwrapSlider, 'max':10, 'min':1,'default':5, 'step':1, 'suffix':'', 'name':'Iterations Second Shrinkwrap:', 'id':'IterationsSecondShrinkwrap','tooltip':''})
+    self.parameters.append({'slider':self.iterationsSecondShrinkwrapSlider, 'max':10, 'min':1,'default':5, 'step':1, 'suffix':'', 'name':'Iterations Second Shrinkwrap:', 'id':ARG_ITERATIONSSECONDSHRINKWRAP,'tooltip':''})
     self.raycastSearchEdgeLengthSlider = None
-    self.parameters.append({'slider':self.raycastSearchEdgeLengthSlider, 'max':100.0, 'min':0.1,'default':20.0, 'step':0.1, 'suffix':' mm', 'name':'Raycast Search Edge Length:', 'id':'RaycastSearchEdgeLength','tooltip':''})
+    self.parameters.append({'slider':self.raycastSearchEdgeLengthSlider, 'max':100.0, 'min':0.1,'default':20.0, 'step':0.1, 'suffix':' mm', 'name':'Raycast Search Edge Length:', 'id':ARG_RAYCASTSEARCHEDGELENGTH,'tooltip':''})
     self.raycastOutputEdgeLengthSlider = None
-    self.parameters.append({'slider':self.raycastOutputEdgeLengthSlider, 'max':100.0, 'min':0.1,'default':2.0, 'step':0.1, 'suffix':' mm', 'name':'Raycast Output Edge Length:', 'id':'RaycastOutputEdgeLength','tooltip':''})
+    self.parameters.append({'slider':self.raycastOutputEdgeLengthSlider, 'max':100.0, 'min':0.1,'default':2.0, 'step':0.1, 'suffix':' mm', 'name':'Raycast Output Edge Length:', 'id':ARG_RAYCASTOUTPUTEDGELENGTH,'tooltip':''})
     self.raycastMaxHitDistanceSlider = None
-    self.parameters.append({'slider':self.raycastMaxHitDistanceSlider, 'max':50.0, 'min':0.1,'default':2.0, 'step':0.01, 'suffix':' mm', 'name':'Raycast Max. Hit Distance:', 'id':'RaycastMaxHitDistance','tooltip':''})
+    self.parameters.append({'slider':self.raycastMaxHitDistanceSlider, 'max':50.0, 'min':0.1,'default':2.0, 'step':0.01, 'suffix':' mm', 'name':'Raycast Max. Hit Distance:', 'id':ARG_RAYCASTMAXHITDISTANCE,'tooltip':''})
     self.raycastMaxLengthSlider = None
-    self.parameters.append({'slider':self.raycastMaxLengthSlider, 'max':1000.0, 'min':0.1,'default':100.0, 'step':0.1, 'suffix':' mm', 'name':'Raycast Max. Length:', 'id':'RaycastMaxLength','tooltip':''})
+    self.parameters.append({'slider':self.raycastMaxLengthSlider, 'max':1000.0, 'min':0.1,'default':100.0, 'step':0.1, 'suffix':' mm', 'name':'Raycast Max. Length:', 'id':ARG_RAYCASTMAXLENGTH,'tooltip':''})
     self.raycastMinLengthSlider = None
-    self.parameters.append({'slider':self.raycastMinLengthSlider, 'max':1000.0, 'min':0.0,'default':0.0, 'step':0.1, 'suffix':' mm', 'name':'Raycast Min. Length:', 'id':'RaycastMinLength','tooltip':''})
+    self.parameters.append({'slider':self.raycastMinLengthSlider, 'max':1000.0, 'min':0.0,'default':0.0, 'step':0.1, 'suffix':' mm', 'name':'Raycast Min. Length:', 'id':ARG_RAYCASTMINLENGTH,'tooltip':''})
     self.maxModelsDistanceSlider = None
-    self.parameters.append({'slider':self.maxModelsDistanceSlider, 'max':10, 'min':0.01,'default':0.7, 'step':0.01, 'suffix':' mm', 'name':'Max. Models Distance:', 'id':'MaxModelsDistance','tooltip':''})
+    self.parameters.append({'slider':self.maxModelsDistanceSlider, 'max':10, 'min':0.01,'default':0.7, 'step':0.01, 'suffix':' mm', 'name':'Max. Models Distance:', 'id':ARG_MAXMODELSDISTANCE,'tooltip':''})
     self.solidificationThicknessSlider = None
-    self.parameters.append({'slider':self.solidificationThicknessSlider, 'max':20.0, 'min':0.1,'default':1.5, 'suffix':' mm', 'step':0.1, 'name':'Solidification Thickness:', 'id':'SolidificationThickness','tooltip':''})
+    self.parameters.append({'slider':self.solidificationThicknessSlider, 'max':20.0, 'min':0.1,'default':1.5, 'suffix':' mm', 'step':0.1, 'name':'Solidification Thickness:', 'id':ARG_SOLIDIFICATIONTHICKNESS,'tooltip':''})
     
     # filter modes
     self.filterModeTypeMap = {}
     self.filterModes = []
     self.surfaceButton = None
-    self.filterModes.append({'button':self.surfaceButton, 'name':'Surface', 'id':MODE_SURFACE_SEG, 'default':True, 'output':'image'})
+    self.filterModes.append({'button':self.surfaceButton, 'name':'Surface', 'id':MODE_SURFACE_SEG, 'default':False, 'output':'image'})
     self.hullShallowButton = None
     self.filterModes.append({'button':self.hullShallowButton, 'name':'Hull Shallow', 'id':MODE_SHALLOW_SEG,'default':False, 'output':'image'})
     self.raycastResultButton = None
@@ -56,7 +56,7 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
     self.hullDeepButton = None
     self.filterModes.append({'button':self.hullDeepButton, 'name':'Hull Deep', 'id':MODE_DEEP_SEG,'default':False, 'output':'image'})
     self.manifoldModelButton = None
-    self.filterModes.append({'button':self.manifoldModelButton, 'name':'Solid Model', 'id':MODE_MANIFOLD_MODEL,'default':False, 'output':'model'})
+    self.filterModes.append({'button':self.manifoldModelButton, 'name':'Solid Model', 'id':MODE_MANIFOLD_MODEL,'default':True, 'output':'model'})
     self.nonmanifoldModelButton = None
     self.filterModes.append({'button':self.nonmanifoldModelButton, 'name':'Non-Manifold Model', 'id':MODE_NONMANIFOLD_MODEL,'default':False, 'output':'model'})
 
@@ -157,7 +157,7 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
     for param in self.parameters:
       self.scriptedEffect.setParameterDefault(param['id'], param['default'])
 
-    self.scriptedEffect.setParameterDefault("FilterMode", next(item for item in self.filterModes if item['default'] == True)['id'])
+    self.scriptedEffect.setParameterDefault(ARG_FILTERMODE, next(item for item in self.filterModes if item['default'] == True)['id'])
 
   def updateGUIFromMRML(self):
     for param in self.parameters:
@@ -166,7 +166,7 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
       param['slider'].value = abs(value)
       param['slider'].blockSignals(wasBlocked)
     
-    filterModeName = self.scriptedEffect.parameter("FilterMode")
+    filterModeName = self.scriptedEffect.parameter(ARG_FILTERMODE)
     filterModeButton = list(self.filterModeTypeMap.keys())[list(self.filterModeTypeMap.values()).index(filterModeName)]
     filterModeButton.setChecked(True)
 
@@ -179,7 +179,7 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
 
     for button in self.filterModeTypeMap:
       if button.isChecked():
-        self.scriptedEffect.setParameter("FilterMode", self.filterModeTypeMap[button])
+        self.scriptedEffect.setParameter(ARG_FILTERMODE, self.filterModeTypeMap[button])
     
     self.cleanup()
   
@@ -203,9 +203,14 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
     for param in self.parameters:
       args.append(self.scriptedEffect.doubleParameter(param['id']))
 
-    args.append(self.scriptedEffect.parameter('FilterMode'))
+    args.append(self.scriptedEffect.parameter(ARG_FILTERMODE))
 
-    self.logic.ApplySRSFilter(seg, segID, *args)
+    kwargs = {}
+    for arg in self.parameters:
+      kwargs.update({arg['id']:self.scriptedEffect.doubleParameter(arg['id'])})
+    kwargs.update({ARG_FILTERMODE:self.scriptedEffect.parameter(ARG_FILTERMODE)})
+
+    self.logic.ApplySRSFilter(seg, segID, **kwargs)
 
     qt.QApplication.restoreOverrideCursor()
 
@@ -222,21 +227,49 @@ class SRSFilterLogic(object):
     self.scriptedEffect = scriptedEffect
     self.logCallback = None
 
-  def ApplySRSFilter(self,\
-    segmentationNode, segmentID,\
-    offsetFirstShrinkwrap=15,\
-    spacingFirstRemesh=10,\
-    spacingSecondRemesh=1,\
-    iterationsFirstShrinkwrap=3,\
-    iterationsSecondShrinkwrap=5,\
-    raycastSearchEdgeLength=20,\
-    raycastOutputEdgeLength=2,\
-    raycastMaxHitDistance=2,\
-    raycastMaxLength=100,\
-    raycastMinLength=0,\
-    maxModelsDistance=0.7,\
-    solidificationThickness=1.5,\
-    filterMode='SURFACE'):
+  def ApplySRSFilter(self, segmentationNode, segmentID, **kwargs):
+    """[summary]
+    
+    Arguments:
+        segmentationNode {[vtkMRMLSegmentationNode]} -- [description]
+        segmentID {[string]} -- [description]
+        **offsetFirstShrinkwrap {[double]} -- []
+        **spacingFirstRemesh {[double]} -- []
+        **spacingSecondRemesh {[double]} -- []
+        **iterationsFirstShrinkwrap {[int]} -- []
+        **iterationsSecondShrinkwrap {[int]} -- []
+        **raycastSearchEdgeLength {[double]} -- []
+        **raycastOutputEdgeLength {[double]} -- []
+        **raycastMaxHitDistance {[double]} -- []
+        **raycastMaxLength {[double]} -- []
+        **raycastMinLength {[double]} -- []
+        **maxModelDistance {[double]} -- []
+        **solidificationThickness {[double]} -- []
+        **filterMode {[double]} -- []
+
+    
+    Returns:
+        [bool] -- [description]
+    """
+
+    
+    options = {
+      ARG_OFFSETFIRSTSHRINKWRAP : 15,
+      ARG_SPACINGFIRSTREMESH : 10,
+      ARG_SPACINGSECONDREMESH : 1,
+      ARG_ITERATIONSFIRSTSHRINKWRAP : 3,
+      ARG_ITERATIONSSECONDSHRINKWRAP : 5,
+      ARG_RAYCASTSEARCHEDGELENGTH : 20,
+      ARG_RAYCASTOUTPUTEDGELENGTH : 2,
+      ARG_RAYCASTMAXHITDISTANCE : 2,
+      ARG_RAYCASTMAXLENGTH : 100,
+      ARG_RAYCASTMINLENGTH : 0,
+      ARG_MAXMODELSDISTANCE : 0.7,
+      ARG_SOLIDIFICATIONTHICKNESS : 1.5,
+      ARG_FILTERMODE : MODE_MANIFOLD_MODEL
+      }
+
+    options.update(kwargs)
     
 
     self.segLogic = slicer.vtkSlicerSegmentationsModuleLogic
@@ -403,10 +436,10 @@ class SRSFilterLogic(object):
     cellLocator.SetDataSet(inputPolyData)
     cellLocator.BuildLocator()
   
-    for x in range(int(iterationsFirstShrinkwrap)):
+    for x in range(int(options[ARG_ITERATIONSFIRSTSHRINKWRAP])):
       
       # shrinkwrap
-      if self.logCallback: self.logCallback('Shrinkwrapping %s/%s...' %(x+1, int(iterationsFirstShrinkwrap)))
+      if self.logCallback: self.logCallback('Shrinkwrapping %s/%s...' %(x+1, int(options[ARG_ITERATIONSFIRSTSHRINKWRAP])))
       
       points = shrinkModelPD.GetPoints()
 
@@ -423,8 +456,8 @@ class SRSFilterLogic(object):
         vector = closestPoint - originPoint
         vectorLength = np.linalg.norm(vector)
 
-        if offsetFirstShrinkwrap > 0 and vectorLength > 0.01:
-          newLocation = closestPoint - ((vector/vectorLength) * offsetFirstShrinkwrap)
+        if options[ARG_OFFSETFIRSTSHRINKWRAP] > 0 and vectorLength > 0.01:
+          newLocation = closestPoint - ((vector/vectorLength) * options[ARG_OFFSETFIRSTSHRINKWRAP])
         else:
           newLocation = closestPoint
         
@@ -432,14 +465,14 @@ class SRSFilterLogic(object):
       
       shrinkModelPD.SetPoints(points)
 
-      if x == (int(iterationsFirstShrinkwrap) - 1):
+      if x == (int(options[ARG_ITERATIONSFIRSTSHRINKWRAP]) - 1):
         break
 
       # remesh
-      if self.logCallback: self.logCallback('Remeshing %s/%s...' %(x+1, int(iterationsSecondShrinkwrap)))
-      shrinkModelPD.DeepCopy(remeshPolydata(shrinkModelPD, [spacingFirstRemesh]*3))
+      if self.logCallback: self.logCallback('Remeshing %s/%s...' %(x+1, int(options[ARG_ITERATIONSSECONDSHRINKWRAP])))
+      shrinkModelPD.DeepCopy(remeshPolydata(shrinkModelPD, [options[ARG_SPACINGFIRSTREMESH]]*3))
     
-    if filterMode == MODE_SHALLOW_SEG:
+    if options[ARG_FILTERMODE] == MODE_SHALLOW_SEG:
       polydataToSegment(shrinkModelPD)
       cleanup()
       return True
@@ -464,7 +497,7 @@ class SRSFilterLogic(object):
         length = np.linalg.norm(pointsArray[pa] - pointsArray[pa + 1])
         edgeLength.append(length)
 
-      if max(edgeLength) > raycastSearchEdgeLength:
+      if max(edgeLength) > options[ARG_RAYCASTSEARCHEDGELENGTH]:
         largeCellIds.InsertNextId(i)
 
     # extract large cells for cell point localization
@@ -483,7 +516,7 @@ class SRSFilterLogic(object):
     ids = vtk.vtkIdFilter()
     adapt = vtk.vtkAdaptiveSubdivisionFilter()
     adapt.SetInputData(shrinkModelPD)
-    adapt.SetMaximumEdgeLength(raycastOutputEdgeLength)
+    adapt.SetMaximumEdgeLength(options[ARG_RAYCASTOUTPUTEDGELENGTH])
     adapt.SetMaximumTriangleArea(vtk.VTK_INT_MAX)
     adapt.SetMaximumNumberOfPasses(vtk.VTK_INT_MAX)
     adapt.Update()
@@ -494,7 +527,7 @@ class SRSFilterLogic(object):
 
     shrinkModelPD.DeepCopy(clean.GetOutput())
 
-    if largeCellIds.GetNumberOfIds() > 0 and raycastMaxLength > 0.0:
+    if largeCellIds.GetNumberOfIds() > 0 and options[ARG_RAYCASTMAXLENGTH] > 0.0:
 
       # locate the points of previous large cells and write into largePointIds Set
       largeDistance = vtk.vtkImplicitPolyDataDistance()
@@ -542,7 +575,7 @@ class SRSFilterLogic(object):
               cell = shrinkModelPD.GetCell(i)
               pointId = cell.GetPointIds().GetId(p)
               normal = np.array(shrinkModelPD.GetPointData().GetArray('Normals').GetTuple(pointId)) * (-1)
-              vector = normal * raycastMaxLength # max Length greater 0, checked above
+              vector = normal * options[ARG_RAYCASTMAXLENGTH] # max Length greater 0, checked above
 
               points = cell.GetPoints()
 
@@ -559,7 +592,7 @@ class SRSFilterLogic(object):
               subId = vtk.mutable(0)
               cellLocator.IntersectWithLine(a0, a1, tol, t, glo, par, subId, cellId, cell)
 
-              loc_new = np.array(glo)# - (normal * offsetFirstShrinkwrap)
+              loc_new = np.array(glo)# - (normal * options[ARG_OFFSETFIRSTSHRINKWRAP])
               length = np.linalg.norm(glo - a0)
               res = False
               if np.linalg.norm(glo) != 0:
@@ -572,7 +605,7 @@ class SRSFilterLogic(object):
         # check result
         if vert_location_dict[i][0] == True:
           # check min length
-          if vert_location_dict[i][2] > raycastMinLength:
+          if vert_location_dict[i][2] > options[ARG_RAYCASTMINLENGTH]:
             
             # check distance between two new locations with positive result
             cellIds = vtk.vtkIdList()
@@ -590,11 +623,11 @@ class SRSFilterLogic(object):
                 if pointId != i and vert_location_dict[pointId][0] == True:
                   point = vert_location_dict[pointId][1]
                   distance = np.linalg.norm(-vert_location_dict[i][1] + point)
-                  if distance < raycastMaxHitDistance:
+                  if distance < options[ARG_RAYCASTMAXHITDISTANCE]:
                     shrinkModelPD.GetPoints().SetPoint(i, vert_location_dict[i][1])
                     pointChanged = True
 
-    if filterMode == MODE_RAYCAST_SEG:
+    if options[ARG_FILTERMODE] == MODE_RAYCAST_SEG:
       polydataToSegment(shrinkModelPD)
       cleanup()
       return True
@@ -603,17 +636,17 @@ class SRSFilterLogic(object):
 
     #region Shrinkwrap
 
-    for x in range(int(iterationsSecondShrinkwrap)+1):
+    for x in range(int(options[ARG_ITERATIONSSECONDSHRINKWRAP])+1):
       
       # remesh
-      if self.logCallback: self.logCallback('Remeshing %s/%s...' %(x+1, int(iterationsSecondShrinkwrap)+1))
-      shrinkModelPD.DeepCopy(remeshPolydata(shrinkModelPD, [spacingSecondRemesh]*3))
+      if self.logCallback: self.logCallback('Remeshing %s/%s...' %(x+1, int(options[ARG_ITERATIONSSECONDSHRINKWRAP])+1))
+      shrinkModelPD.DeepCopy(remeshPolydata(shrinkModelPD, [options[ARG_SPACINGSECONDREMESH]]*3))
 
-      if x == int(iterationsSecondShrinkwrap):
+      if x == int(options[ARG_ITERATIONSSECONDSHRINKWRAP]):
         break
 
       # shrinkwrap
-      if self.logCallback: self.logCallback('Shrinkwrapping %s/%s...' %(x+1, int(iterationsSecondShrinkwrap)))
+      if self.logCallback: self.logCallback('Shrinkwrapping %s/%s...' %(x+1, int(options[ARG_ITERATIONSSECONDSHRINKWRAP])))
 
       smoothFilter = vtk.vtkSmoothPolyDataFilter()
       smoothFilter.SetInputData(0, shrinkModelPD)
@@ -622,7 +655,7 @@ class SRSFilterLogic(object):
       shrinkModelPD.DeepCopy(smoothFilter.GetOutput())
 
     
-    if filterMode == MODE_DEEP_SEG:
+    if options[ARG_FILTERMODE] == MODE_DEEP_SEG:
       polydataToSegment(shrinkModelPD)
       cleanup()
       return True
@@ -648,14 +681,14 @@ class SRSFilterLogic(object):
         point = points.GetPoint(p)
         distance = implicitDistance.EvaluateFunction(point)
 
-        if abs(distance) > maxModelsDistance:
+        if abs(distance) > options[ARG_MAXMODELSDISTANCE]:
           nonsolidPolyData.DeleteCell(c)
           break
 
     nonsolidPolyData.RemoveDeletedCells()
     shrinkModelPD.DeepCopy(nonsolidPolyData)
 
-    if filterMode == MODE_NONMANIFOLD_MODEL:
+    if options[ARG_FILTERMODE] == MODE_NONMANIFOLD_MODEL:
       polydataToModel(shrinkModelPD)
       cleanup()
       return True
@@ -719,7 +752,7 @@ class SRSFilterLogic(object):
       dir_vec_norm = dir_vec / np.linalg.norm(dir_vec)
       proj_length = np.dot(dir_vec_norm, np.array(normalsArray[0]))
       dir_vec_finallenght = dir_vec_norm * proj_length
-      vertex_neu = np.array(shrinkModelPD.GetPoint(pointID)) + (dir_vec_finallenght * solidificationThickness)
+      vertex_neu = np.array(shrinkModelPD.GetPoint(pointID)) + (dir_vec_finallenght * options[ARG_SOLIDIFICATIONTHICKNESS])
       
       # append point
       addingPoints.append(vertex_neu)
@@ -786,12 +819,12 @@ class SRSFilterLogic(object):
     #endregion
 
 
-    if filterMode == MODE_MANIFOLD_MODEL:
+    if options[ARG_FILTERMODE] == MODE_MANIFOLD_MODEL:
       polydataToModel(triangleFilter.GetOutput())
       cleanup()
       return True
     
-    if filterMode == MODE_SURFACE_SEG:
+    if options[ARG_FILTERMODE] == MODE_SURFACE_SEG:
       polydataToSegment(triangleFilter.GetOutput())
       cleanup()
       return True
@@ -800,6 +833,20 @@ class SRSFilterLogic(object):
     return False
 
       
+ARG_OFFSETFIRSTSHRINKWRAP = 'offsetFirstShrinkwrap'
+ARG_SPACINGFIRSTREMESH = 'spacingFirstRemesh'
+ARG_SPACINGSECONDREMESH = 'spacingSecondRemesh'
+ARG_ITERATIONSFIRSTSHRINKWRAP = 'iterationsFirstShrinkwrap'
+ARG_ITERATIONSSECONDSHRINKWRAP = 'iterationsSecondShrinkwrap'
+ARG_RAYCASTSEARCHEDGELENGTH = 'raycastSearchEdgeLength'
+ARG_RAYCASTOUTPUTEDGELENGTH = 'raycastOutputEdgeLength'
+ARG_RAYCASTMAXHITDISTANCE = 'raycastMaxHitDistance'
+ARG_RAYCASTMAXLENGTH = 'raycastMaxLength'
+ARG_RAYCASTMINLENGTH = 'raycastMinLength'
+ARG_MAXMODELSDISTANCE = 'maxModelDistance'
+ARG_SOLIDIFICATIONTHICKNESS = 'solidificationThickness'
+ARG_FILTERMODE = 'filterMode'
+
 MODE_SHALLOW_SEG = 'SHALLOW_SEG'
 MODE_DEEP_SEG = 'DEEP_SEG'
 MODE_RAYCAST_SEG = 'RAYCAST'
