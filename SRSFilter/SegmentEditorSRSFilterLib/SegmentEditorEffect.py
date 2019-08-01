@@ -19,46 +19,33 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
 
     # parameters
     self.parameters = []
-    self.offsetFirstShrinkwrapSlider = None
-    self.parameters.append({'slider':self.offsetFirstShrinkwrapSlider, 'max':50.0, 'min':1.0,'default':15.0, 'step':0.1, 'suffix':' mm', 'name':'Offset First Shrinkwrap:', 'id':ARG_OFFSETFIRSTSHRINKWRAP,'tooltip':''})
-    self.spacingFirstRemeshSlider = None
-    self.parameters.append({'slider':self.spacingFirstRemeshSlider, 'max':50.0, 'min':0.1,'default':10.0, 'step':0.1, 'suffix':' mm^3', 'name':'Spacing First Remesh:', 'id':ARG_SPACINGFIRSTREMESH,'tooltip':''})
-    self.spacingSecondShrinkwrapSlider = None
-    self.parameters.append({'slider':self.spacingSecondShrinkwrapSlider, 'max':10, 'min':1,'default':1.0, 'step':1, 'suffix':' mm^s3', 'name':'Spacing Second Shrinkwrap:', 'id':ARG_SPACINGSECONDREMESH,'tooltip':''})
-    self.iterationsFirstShrinkwrapSlider = None
-    self.parameters.append({'slider':self.iterationsFirstShrinkwrapSlider, 'max':10, 'min':1,'default':3, 'step':1, 'suffix':'', 'name':'Iterations First Shrinkwrap:', 'id':ARG_ITERATIONSFIRSTSHRINKWRAP,'tooltip':''})
-    self.iterationsSecondShrinkwrapSlider = None
-    self.parameters.append({'slider':self.iterationsSecondShrinkwrapSlider, 'max':10, 'min':1,'default':5, 'step':1, 'suffix':'', 'name':'Iterations Second Shrinkwrap:', 'id':ARG_ITERATIONSSECONDSHRINKWRAP,'tooltip':''})
-    self.raycastSearchEdgeLengthSlider = None
-    self.parameters.append({'slider':self.raycastSearchEdgeLengthSlider, 'max':100.0, 'min':0.1,'default':20.0, 'step':0.1, 'suffix':' mm', 'name':'Raycast Search Edge Length:', 'id':ARG_RAYCASTSEARCHEDGELENGTH,'tooltip':''})
-    self.raycastOutputEdgeLengthSlider = None
-    self.parameters.append({'slider':self.raycastOutputEdgeLengthSlider, 'max':100.0, 'min':0.1,'default':2.0, 'step':0.1, 'suffix':' mm', 'name':'Raycast Output Edge Length:', 'id':ARG_RAYCASTOUTPUTEDGELENGTH,'tooltip':''})
-    self.raycastMaxHitDistanceSlider = None
-    self.parameters.append({'slider':self.raycastMaxHitDistanceSlider, 'max':50.0, 'min':0.1,'default':2.0, 'step':0.01, 'suffix':' mm', 'name':'Raycast Max. Hit Distance:', 'id':ARG_RAYCASTMAXHITDISTANCE,'tooltip':''})
-    self.raycastMaxLengthSlider = None
-    self.parameters.append({'slider':self.raycastMaxLengthSlider, 'max':1000.0, 'min':0.1,'default':100.0, 'step':0.1, 'suffix':' mm', 'name':'Raycast Max. Length:', 'id':ARG_RAYCASTMAXLENGTH,'tooltip':''})
-    self.raycastMinLengthSlider = None
-    self.parameters.append({'slider':self.raycastMinLengthSlider, 'max':1000.0, 'min':0.0,'default':0.0, 'step':0.1, 'suffix':' mm', 'name':'Raycast Min. Length:', 'id':ARG_RAYCASTMINLENGTH,'tooltip':''})
-    self.maxModelsDistanceSlider = None
-    self.parameters.append({'slider':self.maxModelsDistanceSlider, 'max':10, 'min':0.01,'default':0.7, 'step':0.01, 'suffix':' mm', 'name':'Max. Models Distance:', 'id':ARG_MAXMODELSDISTANCE,'tooltip':''})
-    self.solidificationThicknessSlider = None
-    self.parameters.append({'slider':self.solidificationThicknessSlider, 'max':20.0, 'min':0.1,'default':1.5, 'suffix':' mm', 'step':0.1, 'name':'Solidification Thickness:', 'id':ARG_SOLIDIFICATIONTHICKNESS,'tooltip':''})
+    self.parameters.append({'max':50.0, 'min':0.0,'default':15.0, 'step':0.1, 'suffix':'mm', 'name':'Offset First Shrinkwrap:', 'id':ARG_OFFSETFIRSTSHRINKWRAP,'tooltip':''})
+    self.parameters.append({'max':50.0, 'min':0.1,'default':10.0, 'step':0.1, 'suffix':'mm^3', 'name':'Spacing First Remesh:', 'id':ARG_SPACINGFIRSTREMESH,'tooltip':''})
+    self.parameters.append({'max':10, 'min':0.1,'default':1.0, 'step':0.1, 'suffix':'mm^3', 'name':'Spacing Second Shrinkwrap:', 'id':ARG_SPACINGSECONDREMESH,'tooltip':''})
+    self.parameters.append({'max':10, 'min':1,'default':3, 'step':1, 'suffix':'', 'name':'Iterations First Shrinkwrap:', 'id':ARG_ITERATIONSFIRSTSHRINKWRAP,'tooltip':''})
+    self.parameters.append({'max':10, 'min':0,'default':5, 'step':1, 'suffix':'', 'name':'Iterations Second Shrinkwrap:', 'id':ARG_ITERATIONSSECONDSHRINKWRAP,'tooltip':''})
+    self.parameters.append({'max':100.0, 'min':0.1,'default':20.0, 'step':0.1, 'suffix':'mm', 'name':'Raycast Search Edge Length:', 'id':ARG_RAYCASTSEARCHEDGELENGTH,'tooltip':''})
+    self.parameters.append({'max':100.0, 'min':0.1,'default':2.0, 'step':0.1, 'suffix':'mm', 'name':'Raycast Output Edge Length:', 'id':ARG_RAYCASTOUTPUTEDGELENGTH,'tooltip':''})
+    self.parameters.append({'max':50.0, 'min':0.1,'default':2.0, 'step':0.01, 'suffix':'mm', 'name':'Raycast Max. Hit Distance:', 'id':ARG_RAYCASTMAXHITDISTANCE,'tooltip':''})
+    self.parameters.append({'max':1000.0, 'min':0.1,'default':100.0, 'step':0.1, 'suffix':'mm', 'name':'Raycast Max. Length:', 'id':ARG_RAYCASTMAXLENGTH,'tooltip':''})
+    self.parameters.append({'max':1000.0, 'min':0.0,'default':0.0, 'step':0.1, 'suffix':'mm', 'name':'Raycast Min. Length:', 'id':ARG_RAYCASTMINLENGTH,'tooltip':''})
+    self.parameters.append({'max':10, 'min':0.01,'default':0.7, 'step':0.01, 'suffix':'mm', 'name':'Max. Models Distance:', 'id':ARG_MAXMODELSDISTANCE,'tooltip':''})
+    self.parameters.append({'max':20.0, 'min':0.1,'default':1.5, 'suffix':'mm', 'step':0.1, 'name':'Solidification Thickness:', 'id':ARG_SOLIDIFICATIONTHICKNESS,'tooltip':''})
+    self.parameters.append({'max':1.0, 'min':0.0,'default':0.2, 'suffix':'', 'step':0.1, 'name':'Smoothing Factor:', 'id':ARG_SMOOTHINGFACTOR,'tooltip':''})
     
     # filter modes
-    self.filterModeTypeMap = {}
     self.filterModes = []
-    self.surfaceButton = None
-    self.filterModes.append({'button':self.surfaceButton, 'name':'Surface', 'id':MODE_SURFACE_SEG, 'default':False, 'output':'image'})
-    self.hullShallowButton = None
-    self.filterModes.append({'button':self.hullShallowButton, 'name':'Hull Shallow', 'id':MODE_SHALLOW_SEG,'default':False, 'output':'image'})
-    self.raycastResultButton = None
-    self.filterModes.append({'button':self.raycastResultButton, 'name':'Raycast Result', 'id':MODE_RAYCAST_SEG,'default':False, 'output':'image'})
-    self.hullDeepButton = None
-    self.filterModes.append({'button':self.hullDeepButton, 'name':'Hull Deep', 'id':MODE_DEEP_SEG,'default':False, 'output':'image'})
-    self.manifoldModelButton = None
-    self.filterModes.append({'button':self.manifoldModelButton, 'name':'Solid Model', 'id':MODE_MANIFOLD_MODEL,'default':True, 'output':'model'})
-    self.nonmanifoldModelButton = None
-    self.filterModes.append({'button':self.nonmanifoldModelButton, 'name':'Non-Manifold Model', 'id':MODE_NONMANIFOLD_MODEL,'default':False, 'output':'model'})
+    self.filterModes.append({'name':'Convex Hull', 'id':MODE_CONVEXHULL, 'default':False})
+    self.filterModes.append({'name':'Raycasts', 'id':MODE_RAYCASTS,'default':False})
+    self.filterModes.append({'name':'Deep Hull', 'id':MODE_DEEPHULL,'default':False})
+    self.filterModes.append({'name':'Nonmanifold', 'id':MODE_NONMANIFOLD,'default':False})
+    self.filterModes.append({'name':'Solidified', 'id':MODE_SOLIDIFIED,'default':True})
+
+    # outputTypes
+    self.outputTypes = []
+    self.outputTypes.append({'name':'Model', 'id':OUTPUT_MODEL, 'default':True})
+    self.outputTypes.append({'name':'Segmentation', 'id':OUTPUT_SEGMENTATION, 'default':False})
+
 
   def clone(self):
     # It should not be necessary to modify this method
@@ -88,34 +75,34 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
 
 
   def setupOptionsFrame(self):
-
-    self.applyButton = qt.QPushButton("Apply")
-    self.applyButton.objectName = self.__class__.__name__ + 'Apply'
-    self.applyButton.setToolTip("")
-    self.scriptedEffect.addOptionsWidget(self.applyButton)
-
-    self.applyButton.connect('clicked()', self.onApply)
-
+    
     # setup filter modes
-    filterModeLayout = qt.QGridLayout()
-    columnCount = 0
-    rowCount = 0
-    self.filterModeButtons = []
-    for mode in self.filterModes:
-      mode['button'] = qt.QRadioButton(mode['name'])
-      self.filterModeButtons.append(mode['button'])
-      self.filterModeTypeMap[mode['button']] = mode['id']
-      mode['button'].connect('toggled(bool)', self.updateMRMLFromGUI)
-      
-      filterModeLayout.addWidget(mode['button'], rowCount, columnCount)
-      
-      if columnCount >= 2:
-        columnCount = 0
-        rowCount += 1
-      else:
-        columnCount += 1
 
-    self.scriptedEffect.addLabeledOptionsWidget("Filter Mode:", filterModeLayout)
+    self.filterModeLayout = qt.QVBoxLayout()
+    self.scriptedEffect.addLabeledOptionsWidget("Filter Mode:", self.filterModeLayout)
+    self.filterModeGroup = qt.QButtonGroup()
+
+    for i, mode in enumerate(self.filterModes):
+      mode['element'] = qt.QRadioButton(mode['name'])
+      self.filterModeGroup.addButton(mode['element'])
+      self.filterModeLayout.addWidget(mode['element'])
+      if mode['default']: mode['element'].setChecked(True)
+    
+    self.filterModeGroup.connect('buttonClicked(int)', self.updateMRMLFromGUI)
+
+    # setup output type
+    self.outputTypeLayout = qt.QVBoxLayout()
+    self.scriptedEffect.addLabeledOptionsWidget("Output Type:", self.outputTypeLayout)
+    self.outputTypeGroup = qt.QButtonGroup()
+
+    for i, out in enumerate(self.outputTypes):
+      out['element'] = qt.QRadioButton(out['name'])
+      self.outputTypeGroup.addButton(out['element'])
+      self.outputTypeLayout.addWidget(out['element'])
+      if out['default']: out['element'].setChecked(True)
+
+    self.outputTypeGroup.connect('buttonClicked(int)', self.updateMRMLFromGUI)
+
 
     # setup parameters
     advancedSettingsFrame = ctk.ctkCollapsibleGroupBox()
@@ -125,20 +112,29 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
     advancedSettingsFrame.setLayout(qt.QFormLayout())
 
     for param in self.parameters:
-      param['slider'] = slicer.qMRMLSliderWidget()
-      param['slider'].setMRMLScene(slicer.mrmlScene)
-      #param['slider'].quantity = "length" # get unit, precision, etc. from MRML unit node
-      param['slider'].minimum = param['min']
-      param['slider'].maximum = param['max']
-      param['slider'].singleStep = param['step']
-      param['slider'].value = param['default']
-      param['slider'].suffix = param['suffix']
-      param['slider'].setToolTip(param['tooltip'])
-      #self.scriptedEffect.addLabeledOptionsWidget(param['name'], param['slider'])
-      advancedSettingsFrame.layout().addRow(param['name'], param['slider'])
-      param['slider'].connect('valueChanged(double)', self.updateMRMLFromGUI)
+      param['element'] = slicer.qMRMLSliderWidget()
+      param['element'].setMRMLScene(slicer.mrmlScene)
+      #param['element'].quantity = "length" # get unit, precision, etc. from MRML unit node
+      param['element'].minimum = param['min']
+      param['element'].maximum = param['max']
+      param['element'].singleStep = param['step']
+      param['element'].value = param['default']
+      param['element'].suffix = param['suffix']
+      param['element'].setToolTip(param['tooltip'])
+      #self.scriptedEffect.addLabeledOptionsWidget(param['name'], param['element'])
+      advancedSettingsFrame.layout().addRow(param['name'], param['element'])
+      param['element'].connect('valueChanged(double)', self.updateMRMLFromGUI)
     
     self.scriptedEffect.addOptionsWidget(advancedSettingsFrame)
+
+    # Apply Button
+
+    self.applyButton = qt.QPushButton("Apply")
+    self.applyButton.objectName = self.__class__.__name__ + 'Apply'
+    self.applyButton.setToolTip("")
+    self.scriptedEffect.addOptionsWidget(self.applyButton)
+
+    self.applyButton.connect('clicked()', self.onApply)
 
 
   def createCursor(self, widget):
@@ -158,35 +154,79 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
       self.scriptedEffect.setParameterDefault(param['id'], param['default'])
 
     self.scriptedEffect.setParameterDefault(ARG_FILTERMODE, next(item for item in self.filterModes if item['default'] == True)['id'])
+    self.scriptedEffect.setParameterDefault(ARG_OUTPUTTYPE, next(item for item in self.outputTypes if item['default'] == True)['id'])
 
   def updateGUIFromMRML(self):
     for param in self.parameters:
       value = self.scriptedEffect.doubleParameter(param['id'])
-      wasBlocked = param['slider'].blockSignals(True)
-      param['slider'].value = abs(value)
-      param['slider'].blockSignals(wasBlocked)
+      wasBlocked = param['element'].blockSignals(True)
+      param['element'].value = abs(value)
+      param['element'].blockSignals(wasBlocked)
     
-    filterModeName = self.scriptedEffect.parameter(ARG_FILTERMODE)
-    filterModeButton = list(self.filterModeTypeMap.keys())[list(self.filterModeTypeMap.values()).index(filterModeName)]
-    filterModeButton.setChecked(True)
+    filterModeID = self.scriptedEffect.parameter(ARG_FILTERMODE)
+    for l in self.filterModes:
+      if l['id'] == filterModeID:
+        l['element'].setChecked(True)
+      else:
+        l['element'].setChecked(False)
+    
+    outputTypeID = self.scriptedEffect.parameter(ARG_OUTPUTTYPE)
+    
+    for t in self.outputTypes:
+      if t['id'] == outputTypeID:
+        t['element'].setChecked(True)
+      else:
+        t['element'].setChecked(False)
 
+    self.disableOptionsLayout()
     self.cleanup()
     
 
   def updateMRMLFromGUI(self):
     for param in self.parameters:
-      self.scriptedEffect.setParameter(param['id'], param['slider'].value)
+      self.scriptedEffect.setParameter(param['id'], param['element'].value)
 
-    for button in self.filterModeTypeMap:
-      if button.isChecked():
-        self.scriptedEffect.setParameter(ARG_FILTERMODE, self.filterModeTypeMap[button])
+    for mode in self.filterModes:
+      if mode['element'].isChecked():
+        self.scriptedEffect.setParameter(ARG_FILTERMODE, mode['id'])
     
+    for typ in self.outputTypes:
+      if typ['element'].isChecked():
+        self.scriptedEffect.setParameter(ARG_OUTPUTTYPE, typ['id'])
+
+    self.disableOptionsLayout()
     self.cleanup()
   
 
   #
   # Effect specific methods (the above ones are the API methods to override)
   #
+
+  def disableOptionsLayout(self):
+    [f['element'].setEnabled(True) for f in self.filterModes if f.has_key('element')]
+    [f['element'].setEnabled(True) for f in self.outputTypes if f.has_key('element')]
+    [f['element'].setEnabled(True) for f in self.parameters if f.has_key('element')]
+    if self.scriptedEffect.parameter(ARG_FILTERMODE) == MODE_SOLIDIFIED: return
+    
+    [f['element'].setEnabled(False) for f in self.parameters if f['id'] == ARG_SOLIDIFICATIONTHICKNESS]
+    if self.scriptedEffect.parameter(ARG_FILTERMODE) == MODE_NONMANIFOLD:
+      [f['element'].setEnabled(False) for f in self.outputTypes if f['id'] == OUTPUT_SEGMENTATION]
+      return
+    
+    [f['element'].setEnabled(False) for f in self.parameters if f['id'] == ARG_MAXMODELSDISTANCE]
+    if self.scriptedEffect.parameter(ARG_FILTERMODE) == MODE_DEEPHULL: return
+    
+    [f['element'].setEnabled(False) for f in self.parameters if f['id'] == ARG_ITERATIONSSECONDSHRINKWRAP]
+    [f['element'].setEnabled(False) for f in self.parameters if f['id'] == ARG_SPACINGSECONDREMESH]    
+    if self.scriptedEffect.parameter(ARG_FILTERMODE) == MODE_RAYCASTS: return
+
+    [f['element'].setEnabled(False) for f in self.parameters if f['id'] == ARG_RAYCASTMAXHITDISTANCE]
+    [f['element'].setEnabled(False) for f in self.parameters if f['id'] == ARG_RAYCASTMAXLENGTH]
+    [f['element'].setEnabled(False) for f in self.parameters if f['id'] == ARG_RAYCASTMINLENGTH]
+    [f['element'].setEnabled(False) for f in self.parameters if f['id'] == ARG_RAYCASTOUTPUTEDGELENGTH]
+    [f['element'].setEnabled(False) for f in self.parameters if f['id'] == ARG_RAYCASTSEARCHEDGELENGTH]
+    return
+
 
   def onApply(self):
 
@@ -199,17 +239,11 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
     seg = self.scriptedEffect.parameterSetNode().GetSegmentationNode()
     segID = self.scriptedEffect.parameterSetNode().GetSelectedSegmentID()
 
-    args = []
-    for param in self.parameters:
-      args.append(self.scriptedEffect.doubleParameter(param['id']))
-
-    args.append(self.scriptedEffect.parameter(ARG_FILTERMODE))
-
     kwargs = {}
     for arg in self.parameters:
       kwargs.update({arg['id']:self.scriptedEffect.doubleParameter(arg['id'])})
     kwargs.update({ARG_FILTERMODE:self.scriptedEffect.parameter(ARG_FILTERMODE)})
-
+    kwargs.update({ARG_OUTPUTTYPE:self.scriptedEffect.parameter(ARG_OUTPUTTYPE)})
     self.logic.ApplySRSFilter(seg, segID, **kwargs)
 
     qt.QApplication.restoreOverrideCursor()
@@ -233,6 +267,8 @@ class SRSFilterLogic(object):
     Arguments:
         segmentationNode {[vtkMRMLSegmentationNode]} -- [description]
         segmentID {[string]} -- [description]
+        **outputType {[string]} -- [description]
+        **filterMode {[string]} -- [description]
         **offsetFirstShrinkwrap {[double]} -- []
         **spacingFirstRemesh {[double]} -- []
         **spacingSecondRemesh {[double]} -- []
@@ -245,7 +281,7 @@ class SRSFilterLogic(object):
         **raycastMinLength {[double]} -- []
         **maxModelDistance {[double]} -- []
         **solidificationThickness {[double]} -- []
-        **filterMode {[double]} -- []
+        **smoothingFactor {[double]} -- []
 
     
     Returns:
@@ -254,6 +290,8 @@ class SRSFilterLogic(object):
 
     
     options = {
+      ARG_OUTPUTTYPE : OUTPUT_MODEL,
+      ARG_FILTERMODE : MODE_SOLIDIFIED,
       ARG_OFFSETFIRSTSHRINKWRAP : 15,
       ARG_SPACINGFIRSTREMESH : 10,
       ARG_SPACINGSECONDREMESH : 1,
@@ -266,23 +304,25 @@ class SRSFilterLogic(object):
       ARG_RAYCASTMINLENGTH : 0,
       ARG_MAXMODELSDISTANCE : 0.7,
       ARG_SOLIDIFICATIONTHICKNESS : 1.5,
-      ARG_FILTERMODE : MODE_MANIFOLD_MODEL
+      ARG_SMOOTHINGFACTOR : 0.2
       }
 
     options.update(kwargs)
     
+    print options
 
     self.segLogic = slicer.vtkSlicerSegmentationsModuleLogic
     self.modelsLogic = slicer.modules.models.logic()
 
     tempNodes = []
 
-    def polydataToModel(polydata):
+    def polydataToModel(polydata, smooth=True):
       if self.logCallback: self.logCallback('Creating Model...')
+      
+      if smooth:
+        polydata = smoothPolydata(polydata)
 
-      smoothPD = smoothPolydata(polydata)
-
-      modelNode = self.modelsLogic.AddModel(smoothPD)
+      modelNode = self.modelsLogic.AddModel(polydata)
         
       seg = self.scriptedEffect.parameterSetNode().GetSegmentationNode().GetSegmentation().GetSegment(self.scriptedEffect.parameterSetNode().GetSelectedSegmentID())
       modelNode.GetDisplayNode().SetColor(seg.GetColor())
@@ -291,12 +331,13 @@ class SRSFilterLogic(object):
 
       return True
 
-    def polydataToSegment(polydata):
+    def polydataToSegment(polydata, smooth=True):
       if self.logCallback: self.logCallback('Updating Segmentation...')
+      
+      if smooth:
+        polydata = smoothPolydata(polydata)
 
-      smoothPD = smoothPolydata(polydata)
-
-      tempOutputModelNode = self.modelsLogic.AddModel(smoothPD)
+      tempOutputModelNode = self.modelsLogic.AddModel(polydata)
       tempNodes.append(tempOutputModelNode)
       tempSegment = self.segLogic.CreateSegmentFromModelNode(tempOutputModelNode,segmentationNode)
       col = segmentationNode.GetSegmentation().GetSegment(segmentID).GetColor()
@@ -377,21 +418,26 @@ class SRSFilterLogic(object):
     def smoothPolydata(polydata):
       decimator = vtk.vtkDecimatePro()
       decimator.SetInputData(polydata)
-      decimator.SetFeatureAngle(60)
+      #decimator.SetFeatureAngle(60)
       decimator.SplittingOff()
       decimator.PreserveTopologyOn()
       decimator.SetMaximumError(1)
-      decimator.SetTargetReduction(0.25)
+      decimator.SetTargetReduction(0.0)
+      #decimator.SetTargetReduction(0.5)
       decimator.ReleaseDataFlagOff()
       decimator.Update()
 
+      passBand = pow(10.0, -4.0*options[ARG_SMOOTHINGFACTOR])
       smootherSinc = vtk.vtkWindowedSincPolyDataFilter()
-      smootherSinc.SetPassBand(0.1)
+      # smootherSinc.SetPassBand(passBand)
       smootherSinc.SetInputConnection(decimator.GetOutputPort())
-      smootherSinc.SetNumberOfIterations(10)
+      #smootherSinc.SetInputData(polydata)
+      smootherSinc.SetNumberOfIterations(20)
       smootherSinc.FeatureEdgeSmoothingOff()
       smootherSinc.BoundarySmoothingOff()
       smootherSinc.ReleaseDataFlagOn()
+      smootherSinc.NonManifoldSmoothingOn()
+      smootherSinc.NormalizeCoordinatesOn()
       smootherSinc.Update()
 
       return smootherSinc.GetOutput()
@@ -472,8 +518,15 @@ class SRSFilterLogic(object):
       if self.logCallback: self.logCallback('Remeshing %s/%s...' %(x+1, int(options[ARG_ITERATIONSSECONDSHRINKWRAP])))
       shrinkModelPD.DeepCopy(remeshPolydata(shrinkModelPD, [options[ARG_SPACINGFIRSTREMESH]]*3))
     
-    if options[ARG_FILTERMODE] == MODE_SHALLOW_SEG:
-      polydataToSegment(shrinkModelPD)
+    if options[ARG_FILTERMODE] == MODE_CONVEXHULL:
+      if options[ARG_OUTPUTTYPE] == OUTPUT_SEGMENTATION:
+        polydataToSegment(shrinkModelPD)
+      elif options[ARG_OUTPUTTYPE] == OUTPUT_MODEL:
+        polydataToModel(shrinkModelPD)
+      else:
+        logging.error('unknown outputType')
+        return False
+      
       cleanup()
       return True
 
@@ -627,8 +680,15 @@ class SRSFilterLogic(object):
                     shrinkModelPD.GetPoints().SetPoint(i, vert_location_dict[i][1])
                     pointChanged = True
 
-    if options[ARG_FILTERMODE] == MODE_RAYCAST_SEG:
-      polydataToSegment(shrinkModelPD)
+    if options[ARG_FILTERMODE] == MODE_RAYCASTS:
+      if options[ARG_OUTPUTTYPE] == OUTPUT_SEGMENTATION:
+        polydataToSegment(shrinkModelPD)
+      elif options[ARG_OUTPUTTYPE] == OUTPUT_MODEL:
+        polydataToModel(shrinkModelPD)
+      else:
+        logging.error('unknown outputType')
+        return False
+      
       cleanup()
       return True
     
@@ -654,9 +714,17 @@ class SRSFilterLogic(object):
       smoothFilter.Update()
       shrinkModelPD.DeepCopy(smoothFilter.GetOutput())
 
+    shrinkModelPD.DeepCopy(smoothPolydata(shrinkModelPD))
     
-    if options[ARG_FILTERMODE] == MODE_DEEP_SEG:
-      polydataToSegment(shrinkModelPD)
+    if options[ARG_FILTERMODE] == MODE_DEEPHULL:
+      if options[ARG_OUTPUTTYPE] == OUTPUT_SEGMENTATION:
+        polydataToSegment(shrinkModelPD, False)
+      elif options[ARG_OUTPUTTYPE] == OUTPUT_MODEL:
+        polydataToModel(shrinkModelPD, False)
+      else:
+        logging.error('unknown outputType')
+        return False
+      
       cleanup()
       return True
 
@@ -688,8 +756,15 @@ class SRSFilterLogic(object):
     nonsolidPolyData.RemoveDeletedCells()
     shrinkModelPD.DeepCopy(nonsolidPolyData)
 
-    if options[ARG_FILTERMODE] == MODE_NONMANIFOLD_MODEL:
-      polydataToModel(shrinkModelPD)
+    if options[ARG_FILTERMODE] == MODE_NONMANIFOLD:
+      if options[ARG_OUTPUTTYPE] == OUTPUT_SEGMENTATION:
+        logging.error('outputType "SEGMENTATION" not possible for filterMode "NONMANIFOLD".')
+      elif options[ARG_OUTPUTTYPE] == OUTPUT_MODEL:
+        polydataToModel(shrinkModelPD, False)
+      else:
+        logging.error('unknown outputType')
+        return False
+      
       cleanup()
       return True
 
@@ -818,21 +893,24 @@ class SRSFilterLogic(object):
 
     #endregion
 
-
-    if options[ARG_FILTERMODE] == MODE_MANIFOLD_MODEL:
-      polydataToModel(triangleFilter.GetOutput())
+    if options[ARG_FILTERMODE] == MODE_SOLIDIFIED:
+      if options[ARG_OUTPUTTYPE] == OUTPUT_SEGMENTATION:
+        polydataToSegment(triangleFilter.GetOutput(), False)
+      elif options[ARG_OUTPUTTYPE] == OUTPUT_MODEL:
+        polydataToModel(triangleFilter.GetOutput(), False)
+      else:
+        logging.error('unknown outputType')
+        return False
+      
       cleanup()
       return True
     
-    if options[ARG_FILTERMODE] == MODE_SURFACE_SEG:
-      polydataToSegment(triangleFilter.GetOutput())
-      cleanup()
-      return True
-    
-    logging.error('No or unknown filter mode.')
+    logging.error('unknown filterMode.')
     return False
 
       
+ARG_OUTPUTTYPE = 'outputType'
+ARG_FILTERMODE = 'filterMode'
 ARG_OFFSETFIRSTSHRINKWRAP = 'offsetFirstShrinkwrap'
 ARG_SPACINGFIRSTREMESH = 'spacingFirstRemesh'
 ARG_SPACINGSECONDREMESH = 'spacingSecondRemesh'
@@ -845,12 +923,13 @@ ARG_RAYCASTMAXLENGTH = 'raycastMaxLength'
 ARG_RAYCASTMINLENGTH = 'raycastMinLength'
 ARG_MAXMODELSDISTANCE = 'maxModelDistance'
 ARG_SOLIDIFICATIONTHICKNESS = 'solidificationThickness'
-ARG_FILTERMODE = 'filterMode'
+ARG_SMOOTHINGFACTOR = 'smoothingFactor'
 
-MODE_SHALLOW_SEG = 'SHALLOW_SEG'
-MODE_DEEP_SEG = 'DEEP_SEG'
-MODE_RAYCAST_SEG = 'RAYCAST'
-MODE_SURFACE_SEG = 'SURFACE_SEG'
-MODE_MANIFOLD_MODEL = 'MANIFOLD_MODEL'
-MODE_NONMANIFOLD_MODEL = 'NONMANIFOLD_MODEL'
+OUTPUT_MODEL = 'MODEL'
+OUTPUT_SEGMENTATION = 'SEGMENTATION'
 
+MODE_CONVEXHULL = 'CONVEXHULL'
+MODE_RAYCASTS = 'RAYCASTS'
+MODE_DEEPHULL = 'DEEPHULL'
+MODE_NONMANIFOLD = 'NONMANIFOLD'
+MODE_SOLIDIFIED = 'SOLIDIFIED'
