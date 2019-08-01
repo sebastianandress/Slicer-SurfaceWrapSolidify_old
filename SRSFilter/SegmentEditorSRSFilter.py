@@ -14,12 +14,14 @@ class SegmentEditorSRSFilter(ScriptedLoadableModule):
     ScriptedLoadableModule.__init__(self, parent)
     self.parent.title = "SegmentEditorSRSFilter"
     self.parent.categories = ["Segmentation"]
-    self.parent.dependencies = ["Segmentations"]
-    self.parent.contributors = ["Andras Lasso (PerkLab)"]
+    self.parent.dependencies = ["Segmentations", "Models"]
+    self.parent.contributors = ["Sebastian Andress (LMU Munich)"]
     self.parent.hidden = True
     self.parent.helpText = "This hidden module registers the segment editor effect"
     self.parent.helpText += self.getDefaultModuleDocumentationLink()
-    self.parent.acknowledgementText = "Supported by NA-MIC, NAC, BIRN, NCIGT, and the Slicer Community. See http://www.slicer.org for details."
+    self.parent.acknowledgementText = """
+      This filter was developed by Sebastian Andress (LMU University Hospital Munich, Germany, Department of General-, Trauma- and Reconstructive Surgery).
+      """
     slicer.app.connect("startupCompleted()", self.registerEditorEffect)
 
   def registerEditorEffect(self):

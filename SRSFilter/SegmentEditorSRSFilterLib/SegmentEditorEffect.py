@@ -39,7 +39,7 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
     self.filterModes.append({'name':'Raycasts', 'id':MODE_RAYCASTS,'default':False})
     self.filterModes.append({'name':'Deep Hull', 'id':MODE_DEEPHULL,'default':False})
     self.filterModes.append({'name':'Nonmanifold', 'id':MODE_NONMANIFOLD,'default':False})
-    self.filterModes.append({'name':'Solidified', 'id':MODE_SOLIDIFIED,'default':True})
+    self.filterModes.append({'name':'Solidified Surface', 'id':MODE_SOLIDIFIED,'default':True})
 
     # outputTypes
     self.outputTypes = []
@@ -62,7 +62,19 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
     return qt.QIcon()
 
   def helpText(self):
-    return """bla"""
+    return """<html>This Filter results in an even surface of the current segment<br>.
+    It is using a combination of shrinkwrapping, remeshing, raycasting and solidification algorithms. Because of the process, the following intermediate outputs are possible (with inheritting parameter dependencies):<br>
+
+    <ol style="margin: 0">
+    <li>Convex Hull: Offset First Shrinkwrap, Spacing First Remesh, Iterations First Shrinkwrap.</li>
+    <li>Raycast Result (especially for parameter testing reasons): Raycast Search/Output Edge Lenght, Raycast Max. Hit Distance, Raycast Max./Min. Length.</li>
+    <li>Deep Hull: Spacing Second Remesh, Iterations Second Shrinkwrap.</li>
+    <li>Nonsolid Model (especially for further processing in CAD software): Max. Model Distance, Smoothing Factor. WARNING: It is not possible to create a segment out of this nonsolid process result.</li>
+    <li>Solidified Surface: Solidification Thickness.</li>
+    </ol><br>
+    
+    Current parameters are especially fitted for working on fractured hemipelvic bone segmentation. For further information, license, disclaimers and possible research partnerships visit <a href="https://github.com/sebastianandress/Slicer-SegmentEditorSRSFilter">this</a> github repository.
+    </html>"""
 
   def activate(self):
     pass
@@ -211,9 +223,11 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
     [f['element'].setEnabled(False) for f in self.parameters if f['id'] == ARG_SOLIDIFICATIONTHICKNESS]
     if self.scriptedEffect.parameter(ARG_FILTERMODE) == MODE_NONMANIFOLD:
       [f['element'].setEnabled(False) for f in self.outputTypes if f['id'] == OUTPUT_SEGMENTATION]
+      [f['element'].setChecked(True) for f in self.outputTypes if f['id'] == OUTPUT_MODEL]
       return
     
     [f['element'].setEnabled(False) for f in self.parameters if f['id'] == ARG_MAXMODELSDISTANCE]
+    [f['element'].setEnabled(False) for f in self.parameters if f['id'] == ARG_SMOOTHINGFACTOR]
     if self.scriptedEffect.parameter(ARG_FILTERMODE) == MODE_DEEPHULL: return
     
     [f['element'].setEnabled(False) for f in self.parameters if f['id'] == ARG_ITERATIONSSECONDSHRINKWRAP]
@@ -308,8 +322,6 @@ class SRSFilterLogic(object):
       }
 
     options.update(kwargs)
-    
-    print options
 
     self.segLogic = slicer.vtkSlicerSegmentationsModuleLogic
     self.modelsLogic = slicer.modules.models.logic()
@@ -337,14 +349,17 @@ class SRSFilterLogic(object):
       if smooth:
         polydata = smoothPolydata(polydata)
 
-      tempOutputModelNode = self.modelsLogic.AddModel(polydata)
-      tempNodes.append(tempOutputModelNode)
-      tempSegment = self.segLogic.CreateSegmentFromModelNode(tempOutputModelNode,segmentationNode)
-      col = segmentationNode.GetSegmentation().GetSegment(segmentID).GetColor()
-      name = segmentationNode.GetSegmentation().GetSegment(segmentID).GetName()
+      tempSegment = vtkSegmentationCorePython.vtkSegment()
+      tempSegment.SetName(segmentationNode.GetSegmentation().GetSegment(segmentID).GetName())
+      tempSegment.SetColor(segmentationNode.GetSegmentation().GetSegment(segmentID).GetColor())
+      tempSegment.AddRepresentation(vtkSegmentationCorePython.vtkSegmentationConverter.GetSegmentationClosedSurfaceRepresentationName(), polydata)
       segmentationNode.GetSegmentation().GetSegment(segmentID).DeepCopy(tempSegment)
-      segmentationNode.GetSegmentation().GetSegment(segmentID).SetColor(col)
-      segmentationNode.GetSegmentation().GetSegment(segmentID).SetName(name)
+      
+      # Update views
+      segmentationNode.Modified()
+      if segmentationNode.GetDisplayNode():
+        segmentationNode.GetDisplayNode().SetPreferredDisplayRepresentationName3D(vtkSegmentationCorePython.vtkSegmentationConverter.GetSegmentationClosedSurfaceRepresentationName())
+      segmentationNode.CreateClosedSurfaceRepresentation()
 
       return True
 
@@ -416,26 +431,15 @@ class SRSFilterLogic(object):
       return reverse.GetOutput()
 
     def smoothPolydata(polydata):
-      decimator = vtk.vtkDecimatePro()
-      decimator.SetInputData(polydata)
-      #decimator.SetFeatureAngle(60)
-      decimator.SplittingOff()
-      decimator.PreserveTopologyOn()
-      decimator.SetMaximumError(1)
-      decimator.SetTargetReduction(0.0)
-      #decimator.SetTargetReduction(0.5)
-      decimator.ReleaseDataFlagOff()
-      decimator.Update()
-
       passBand = pow(10.0, -4.0*options[ARG_SMOOTHINGFACTOR])
       smootherSinc = vtk.vtkWindowedSincPolyDataFilter()
       # smootherSinc.SetPassBand(passBand)
-      smootherSinc.SetInputConnection(decimator.GetOutputPort())
-      #smootherSinc.SetInputData(polydata)
+      # smootherSinc.SetInputConnection(decimator.GetOutputPort())
+      smootherSinc.SetInputData(polydata)
       smootherSinc.SetNumberOfIterations(20)
       smootherSinc.FeatureEdgeSmoothingOff()
       smootherSinc.BoundarySmoothingOff()
-      smootherSinc.ReleaseDataFlagOn()
+      # smootherSinc.ReleaseDataFlagOn()
       smootherSinc.NonManifoldSmoothingOn()
       smootherSinc.NormalizeCoordinatesOn()
       smootherSinc.Update()
@@ -520,9 +524,9 @@ class SRSFilterLogic(object):
     
     if options[ARG_FILTERMODE] == MODE_CONVEXHULL:
       if options[ARG_OUTPUTTYPE] == OUTPUT_SEGMENTATION:
-        polydataToSegment(shrinkModelPD)
+        polydataToSegment(shrinkModelPD, False)
       elif options[ARG_OUTPUTTYPE] == OUTPUT_MODEL:
-        polydataToModel(shrinkModelPD)
+        polydataToModel(shrinkModelPD, False)
       else:
         logging.error('unknown outputType')
         return False
@@ -682,9 +686,9 @@ class SRSFilterLogic(object):
 
     if options[ARG_FILTERMODE] == MODE_RAYCASTS:
       if options[ARG_OUTPUTTYPE] == OUTPUT_SEGMENTATION:
-        polydataToSegment(shrinkModelPD)
+        polydataToSegment(shrinkModelPD, False)
       elif options[ARG_OUTPUTTYPE] == OUTPUT_MODEL:
-        polydataToModel(shrinkModelPD)
+        polydataToModel(shrinkModelPD, False)
       else:
         logging.error('unknown outputType')
         return False
