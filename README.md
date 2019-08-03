@@ -1,7 +1,7 @@
 **Copyright (c) 2019, Sebastian Andreß**\
 All rights reserved. Please find the license [here](https://github.com/sebastianandress/Slicer-SegmentEditorSRSFilter/blob/master/LICENSE.md).
 
-For further collaborations, patient studies or any help, do not hesitate to contact [Sebastian Andreß, MD](sebastian.andress@med.uni-muenchen.de).
+For further collaborations, patient studies or any help, do not hesitate to contact [Sebastian Andreß, MD](mailto:sebastian.andress@med.uni-muenchen.de).
 
 # Shrinkwrap-Raycast-Shrinkwrap (SRS) Surface Filter
 
