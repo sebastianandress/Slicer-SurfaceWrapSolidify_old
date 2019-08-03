@@ -244,9 +244,15 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
 
   def onApply(self):
 
+    if self.applyButton.text == 'Cancel':
+      self.logic.requestCancel()
+      return
+    
+
+
     self.scriptedEffect.saveStateForUndo()
 
-    self.applyButton.text = 'Working...'
+    self.applyButton.text = 'Cancel'
     qt.QApplication.setOverrideCursor(qt.Qt.WaitCursor)
 
     #TODO: check if segment is not empty
@@ -276,6 +282,11 @@ class SRSFilterLogic(object):
   def __init__(self, scriptedEffect):
     self.scriptedEffect = scriptedEffect
     self.logCallback = None
+    self.cancelRequested = False
+  
+  def requestCancel(self):
+    logging.info("User requested cancelling.")
+    self.cancelRequested = True
 
   def ApplySRSFilter(self, segmentationNode, segmentID, **kwargs):
     """Applies the Shrinkwrap-Raycast-Shrinkwrap Filter, a surface filter, to the selected passed segment.
@@ -304,7 +315,10 @@ class SRSFilterLogic(object):
         bool: Should return True.
     """
 
-    
+    self.cancelRequested = False
+    self.segLogic = slicer.vtkSlicerSegmentationsModuleLogic
+    self.modelsLogic = slicer.modules.models.logic()
+
     options = {
       ARG_OUTPUTTYPE : OUTPUT_MODEL,
       ARG_FILTERMODE : MODE_SOLIDIFIED,
@@ -325,10 +339,10 @@ class SRSFilterLogic(object):
 
     options.update(kwargs)
 
-    self.segLogic = slicer.vtkSlicerSegmentationsModuleLogic
-    self.modelsLogic = slicer.modules.models.logic()
-
     def polydataToModel(polydata, smooth=True):
+      if self.cancelRequested:
+        cleanup()
+        return False
       if self.logCallback: self.logCallback('Creating Model...')
       
       if smooth:
@@ -344,6 +358,9 @@ class SRSFilterLogic(object):
       return True
 
     def polydataToSegment(polydata, smooth=True):
+      if self.cancelRequested:
+        cleanup()
+        return False
       if self.logCallback: self.logCallback('Updating Segmentation...')
       
       if smooth:
@@ -481,7 +498,6 @@ class SRSFilterLogic(object):
     shrinkModelPD = vtk.vtkPolyData()
     shrinkModelPD.DeepCopy(cleanPolyData.GetOutput())
 
-
     #endregion
 
     #region Shrinkwrap
@@ -493,8 +509,12 @@ class SRSFilterLogic(object):
     for x in range(int(options[ARG_ITERATIONSFIRSTSHRINKWRAP])):
       
       # shrinkwrap
+      if self.cancelRequested:
+        cleanup()
+        return False
+
       if self.logCallback: self.logCallback('Shrinkwrapping %s/%s...' %(x+1, int(options[ARG_ITERATIONSFIRSTSHRINKWRAP])))
-      
+
       points = shrinkModelPD.GetPoints()
 
       for i in xrange(points.GetNumberOfPoints()):
@@ -523,6 +543,9 @@ class SRSFilterLogic(object):
         break
 
       # remesh
+      if self.cancelRequested:
+        cleanup()
+        return False
       if self.logCallback: self.logCallback('Remeshing %s/%s...' %(x+1, int(options[ARG_ITERATIONSSECONDSHRINKWRAP])))
       shrinkModelPD.DeepCopy(remeshPolydata(shrinkModelPD, [options[ARG_SPACINGFIRSTREMESH]]*3))
     
@@ -541,20 +564,23 @@ class SRSFilterLogic(object):
     #endregion
 
     #region Raycast
+    if self.cancelRequested:
+      cleanup()
+      return False
     if self.logCallback: self.logCallback('Raycasting...')
 
     # Find Large Faces and remember IDs of connected points
     largeCellIds = vtk.vtkIdList() # IDs of cells
-    for i in xrange(shrinkModelPD.GetNumberOfCells()):
+    for i in range(shrinkModelPD.GetNumberOfCells()):
       cell = shrinkModelPD.GetCell(i)
 
       # get Length longest edge of cell
       pointsArray = list()
-      for p in xrange(cell.GetNumberOfPoints()):
+      for p in range(cell.GetNumberOfPoints()):
         pointsArray.append(np.array(cell.GetPoints().GetPoint(p)))
 
       edgeLength = list()
-      for pa in xrange(len(pointsArray) - 1):
+      for pa in range(len(pointsArray) - 1):
         length = np.linalg.norm(pointsArray[pa] - pointsArray[pa + 1])
         edgeLength.append(length)
 
@@ -567,7 +593,7 @@ class SRSFilterLogic(object):
     largeCellsPolyData.DeepCopy(shrinkModelPD)
     largeCellsPolyData.BuildLinks()
 
-    for c in xrange(largeCellsPolyData.GetNumberOfCells()):
+    for c in range(largeCellsPolyData.GetNumberOfCells()):
       if largeCellIds.IsId(c) == -1:
         largeCellsPolyData.DeleteCell(c)
 
@@ -588,6 +614,10 @@ class SRSFilterLogic(object):
 
     shrinkModelPD.DeepCopy(clean.GetOutput())
 
+    if self.cancelRequested:
+      cleanup()
+      return False
+
     if largeCellIds.GetNumberOfIds() > 0 and options[ARG_RAYCASTMAXLENGTH] > 0.0:
 
       # locate the points of previous large cells and write into largePointIds Set
@@ -595,7 +625,7 @@ class SRSFilterLogic(object):
       largeDistance.SetInput(largeCellsPolyData)
 
       largePointIds = set()
-      for p in xrange(shrinkModelPD.GetNumberOfPoints()):
+      for p in range(shrinkModelPD.GetNumberOfPoints()):
         point = [0.0]*3
         shrinkModelPD.GetPoints().GetPoint(p, point)
         distance = largeDistance.EvaluateFunction(point)
@@ -618,12 +648,12 @@ class SRSFilterLogic(object):
       # projection
       vert_location_dict = {} # dict to save all projection results
 
-      for i in xrange(shrinkModelPD.GetNumberOfCells()):
+      for i in range(shrinkModelPD.GetNumberOfCells()):
         cell = shrinkModelPD.GetCell(i)
         pointIds = cell.GetPointIds()
         
         if cell.GetCellType() == 5: # cell with face
-          for p in xrange(pointIds.GetNumberOfIds()):
+          for p in range(pointIds.GetNumberOfIds()):
             pointId = pointIds.GetId(p)
 
             # check if cell with point was large before subdividion, and if point got checked already
@@ -662,7 +692,7 @@ class SRSFilterLogic(object):
 
       numberOfPoints = shrinkModelPD.GetNumberOfPoints()
 
-      for i in xrange(numberOfPoints):
+      for i in range(numberOfPoints):
         # check result
         if vert_location_dict[i][0] == True:
           # check min length
@@ -705,15 +735,21 @@ class SRSFilterLogic(object):
     #region Shrinkwrap
 
     for x in range(int(options[ARG_ITERATIONSSECONDSHRINKWRAP])+1):
-      
       # remesh
+      if self.cancelRequested:
+        cleanup()
+        return False
       if self.logCallback: self.logCallback('Remeshing %s/%s...' %(x+1, int(options[ARG_ITERATIONSSECONDSHRINKWRAP])+1))
+      
       shrinkModelPD.DeepCopy(remeshPolydata(shrinkModelPD, [options[ARG_SPACINGSECONDREMESH]]*3))
 
       if x == int(options[ARG_ITERATIONSSECONDSHRINKWRAP]):
         break
 
       # shrinkwrap
+      if self.cancelRequested:
+        cleanup()
+        return False
       if self.logCallback: self.logCallback('Shrinkwrapping %s/%s...' %(x+1, int(options[ARG_ITERATIONSSECONDSHRINKWRAP])))
 
       smoothFilter = vtk.vtkSmoothPolyDataFilter()
@@ -739,6 +775,9 @@ class SRSFilterLogic(object):
     #endregion
 
     #region Remove Caps
+    if self.cancelRequested:
+      cleanup()
+      return False
     if self.logCallback: self.logCallback('Removing Caps...')
 
     # implicit distance, add point ids with larger distance to ids
@@ -779,6 +818,9 @@ class SRSFilterLogic(object):
     #endregion
 
     #region Solidification
+    if self.cancelRequested:
+      cleanup()
+      return False
     if self.logCallback: self.logCallback('Solidifying...')
 
     # remove double vertices
