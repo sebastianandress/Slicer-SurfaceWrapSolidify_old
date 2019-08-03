@@ -4,12 +4,12 @@ project(SegmentEditorSRSFilter)
 
 #-----------------------------------------------------------------------------
 # Extension meta-information
-set(EXTENSION_HOMEPAGE "http://slicer.org/slicerWiki/index.php/Documentation/Nightly/Extensions/SegmentEditorSRSFilter")
+set(EXTENSION_HOMEPAGE "https://github.com/sebastianandress/Slicer-SegmentEditorSRSFilter")
 set(EXTENSION_CATEGORY "Segmentations")
 set(EXTENSION_CONTRIBUTORS "Sebastian Andress (LMU Munich)")
 set(EXTENSION_DESCRIPTION "This is an example of a simple extension")
-set(EXTENSION_ICONURL "http://www.example.com/Slicer/Extensions/SegmentEditorSRSFilter.png")
-set(EXTENSION_SCREENSHOTURLS "http://www.example.com/Slicer/Extensions/SegmentEditorSRSFilter/Screenshots/1.png")
+set(EXTENSION_ICONURL "https://github.com/sebastianandress/Slicer-SegmentEditorSRSFilter/raw/master/SegmentEditorSRSFilter.png")
+set(EXTENSION_SCREENSHOTURLS "https://github.com/sebastianandress/Slicer-SegmentEditorSRSFilter/raw/master/Resources/Screenshots/screenshot1.png")
 set(EXTENSION_DEPENDS "NA") # Specified as a space separated string, a list or 'NA' if any
 
 #-----------------------------------------------------------------------------
