@@ -19,19 +19,19 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
 
     # parameters
     self.parameters = []
-    self.parameters.append({'max':50.0, 'min':0.0,'default':15.0, 'step':0.1, 'suffix':'mm', 'name':'Offset First Shrinkwrap:', 'id':ARG_OFFSETFIRSTSHRINKWRAP,'tooltip':''})
-    self.parameters.append({'max':50.0, 'min':0.1,'default':10.0, 'step':0.1, 'suffix':'mm^3', 'name':'Spacing First Remesh:', 'id':ARG_SPACINGFIRSTREMESH,'tooltip':''})
-    self.parameters.append({'max':10, 'min':0.1,'default':1.0, 'step':0.1, 'suffix':'mm^3', 'name':'Spacing Second Shrinkwrap:', 'id':ARG_SPACINGSECONDREMESH,'tooltip':''})
-    self.parameters.append({'max':10, 'min':1,'default':3, 'step':1, 'suffix':'', 'name':'Iterations First Shrinkwrap:', 'id':ARG_ITERATIONSFIRSTSHRINKWRAP,'tooltip':''})
-    self.parameters.append({'max':10, 'min':0,'default':5, 'step':1, 'suffix':'', 'name':'Iterations Second Shrinkwrap:', 'id':ARG_ITERATIONSSECONDSHRINKWRAP,'tooltip':''})
-    self.parameters.append({'max':100.0, 'min':0.1,'default':20.0, 'step':0.1, 'suffix':'mm', 'name':'Raycast Search Edge Length:', 'id':ARG_RAYCASTSEARCHEDGELENGTH,'tooltip':''})
-    self.parameters.append({'max':100.0, 'min':0.1,'default':2.0, 'step':0.1, 'suffix':'mm', 'name':'Raycast Output Edge Length:', 'id':ARG_RAYCASTOUTPUTEDGELENGTH,'tooltip':''})
-    self.parameters.append({'max':50.0, 'min':0.1,'default':2.0, 'step':0.01, 'suffix':'mm', 'name':'Raycast Max. Hit Distance:', 'id':ARG_RAYCASTMAXHITDISTANCE,'tooltip':''})
-    self.parameters.append({'max':1000.0, 'min':0.1,'default':100.0, 'step':0.1, 'suffix':'mm', 'name':'Raycast Max. Length:', 'id':ARG_RAYCASTMAXLENGTH,'tooltip':''})
-    self.parameters.append({'max':1000.0, 'min':0.0,'default':0.0, 'step':0.1, 'suffix':'mm', 'name':'Raycast Min. Length:', 'id':ARG_RAYCASTMINLENGTH,'tooltip':''})
-    self.parameters.append({'max':10, 'min':0.01,'default':0.7, 'step':0.01, 'suffix':'mm', 'name':'Max. Models Distance:', 'id':ARG_MAXMODELSDISTANCE,'tooltip':''})
-    self.parameters.append({'max':20.0, 'min':0.1,'default':1.5, 'suffix':'mm', 'step':0.1, 'name':'Solidification Thickness:', 'id':ARG_SOLIDIFICATIONTHICKNESS,'tooltip':''})
-    self.parameters.append({'max':1.0, 'min':0.0,'default':0.2, 'suffix':'', 'step':0.1, 'name':'Smoothing Factor:', 'id':ARG_SMOOTHINGFACTOR,'tooltip':''})
+    self.parameters.append({'max':50.0, 'min':0.0,'default':15.0, 'step':0.1, 'suffix':'mm', 'name':'Offset First Shrinkwrap:', 'id':ARG_OFFSETFIRSTSHRINKWRAP,'tooltip':'Distance between segment and surface model.'})
+    self.parameters.append({'max':50.0, 'min':0.1,'default':10.0, 'step':0.1, 'suffix':'mm^3', 'name':'Spacing First Remesh:', 'id':ARG_SPACINGFIRSTREMESH,'tooltip':'The resolution of the surface model. The smaller the spacing and higher the resolution, the more precise this first output result will be. WARNING: Will drastically increase processing time. Especially for the first iteration, high resolution is not needed in most cases.'})
+    self.parameters.append({'max':10, 'min':0.1,'default':1.0, 'step':0.1, 'suffix':'mm^3', 'name':'Spacing Second Shrinkwrap:', 'id':ARG_SPACINGSECONDREMESH,'tooltip':'The resolution of the surface model. The smaller the spacing and higher the resolution, the more precise the resulting surface model will be. WARNING: Will drastically increase processing time. A value of 1 mm^3 normally is enough depending on the original (CT/MRI) volume spacing.'})
+    self.parameters.append({'max':10, 'min':1,'default':3, 'step':1, 'suffix':'', 'name':'Iterations First Shrinkwrap:', 'id':ARG_ITERATIONSFIRSTSHRINKWRAP,'tooltip':'The more iterations, the more precise this first result will be. WARNING: Will increase processing time, depending on spacing.'})
+    self.parameters.append({'max':10, 'min':0,'default':5, 'step':1, 'suffix':'', 'name':'Iterations Second Shrinkwrap:', 'id':ARG_ITERATIONSSECONDSHRINKWRAP,'tooltip':'The more iterations, the more precise this final result will be. WARNING: Will increase processing time, depending on spacing.'})
+    self.parameters.append({'max':100.0, 'min':0.1,'default':20.0, 'step':0.1, 'suffix':'mm', 'name':'Raycast Search Edge Length:', 'id':ARG_RAYCASTSEARCHEDGELENGTH,'tooltip':'If one edge of a face is longer than this, it is used in this step.'})
+    self.parameters.append({'max':100.0, 'min':0.1,'default':2.0, 'step':0.1, 'suffix':'mm', 'name':'Raycast Output Edge Length:', 'id':ARG_RAYCASTOUTPUTEDGELENGTH,'tooltip':'Length of these edges after subdivision. The shorter this length, the more the raycasting will possibly hit spongious parts inside fracture gaps.'})
+    self.parameters.append({'max':50.0, 'min':0.1,'default':2.0, 'step':0.01, 'suffix':'mm', 'name':'Raycast Max. Hit Distance:', 'id':ARG_RAYCASTMAXHITDISTANCE,'tooltip':'Maximal distance between two hits. This setting is to prevent accidental hits way of the other hits.'})
+    self.parameters.append({'max':1000.0, 'min':0.1,'default':100.0, 'step':0.1, 'suffix':'mm', 'name':'Raycast Max. Length:', 'id':ARG_RAYCASTMAXLENGTH,'tooltip':'Maximal length of the ray.'})
+    self.parameters.append({'max':1000.0, 'min':0.0,'default':0.0, 'step':0.1, 'suffix':'mm', 'name':'Raycast Min. Length:', 'id':ARG_RAYCASTMINLENGTH,'tooltip':'Minimal length of the ray.'})
+    self.parameters.append({'max':10, 'min':0.01,'default':0.7, 'step':0.01, 'suffix':'mm', 'name':'Max. Models Distance:', 'id':ARG_MAXMODELSDISTANCE,'tooltip':'If a vertex of the surface model is farer away from the segmented model, it gets deleted with it faces.'})
+    self.parameters.append({'max':20.0, 'min':0.1,'default':1.5, 'suffix':'mm', 'step':0.1, 'name':'Solidification Thickness:', 'id':ARG_SOLIDIFICATIONTHICKNESS,'tooltip':'Thickness of the solidified surface model. The solidification is performed. It is performed to the inside of the model.'})
+    self.parameters.append({'max':1.0, 'min':0.0,'default':0.2, 'suffix':'', 'step':0.1, 'name':'Smoothing Factor:', 'id':ARG_SMOOTHINGFACTOR,'tooltip':'Smoothing of the surface representation. This factor is also used on the output surface model and segmentation.'})
     
     # filter modes
     self.filterModes = []
@@ -278,30 +278,30 @@ class SRSFilterLogic(object):
     self.logCallback = None
 
   def ApplySRSFilter(self, segmentationNode, segmentID, **kwargs):
-    """[summary]
+    """Applies the Shrinkwrap-Raycast-Shrinkwrap Filter, a surface filter, to the selected passed segment.
     
     Arguments:
-        segmentationNode {[vtkMRMLSegmentationNode]} -- [description]
-        segmentID {[string]} -- [description]
-        **outputType {[string]} -- [description]
-        **filterMode {[string]} -- [description]
-        **offsetFirstShrinkwrap {[double]} -- []
-        **spacingFirstRemesh {[double]} -- []
-        **spacingSecondRemesh {[double]} -- []
-        **iterationsFirstShrinkwrap {[int]} -- []
-        **iterationsSecondShrinkwrap {[int]} -- []
-        **raycastSearchEdgeLength {[double]} -- []
-        **raycastOutputEdgeLength {[double]} -- []
-        **raycastMaxHitDistance {[double]} -- []
-        **raycastMaxLength {[double]} -- []
-        **raycastMinLength {[double]} -- []
-        **maxModelDistance {[double]} -- []
-        **solidificationThickness {[double]} -- []
-        **smoothingFactor {[double]} -- []
+        segmentationNode (vtkMRMLSegmentationNode): [Segmentation Node the filter gets applied to.
+        segmentID (string): ID of the Segment the filter gets applied to. WARNING: The filter replaces the former segmentation.
+        **outputType (string): Possible options: 'MODEL', 'SEGMENTATION'
+        **filterMode (string): Possible options: 'CONVEXHULL', 'RAYCASTS', 'DEEPHULL', 'NONMANIFOLD', 'SOLIDIFIED'
+        **offsetFirstShrinkwrap (double): >0, Distance between segment and surface model.
+        **spacingFirstRemesh (double): >0, The resolution of the surface model. The smaller the spacing and higher the resolution, the more precise this first output result will be. WARNING: Will drastically increase processing time. Especially for the first iteration, high resolution is not needed in most cases.
+        **spacingSecondRemesh (double): >0, The resolution of the surface model. The smaller the spacing and higher the resolution, the more precise the resulting surface model will be. WARNING: Will drastically increase processing time. A value of 1 mm^3 normally is enough depending on the original (CT/MRI) volume spacing.
+        **iterationsFirstShrinkwrap (int): >=0, The more iterations, the more precise this first result will be. WARNING: Will increase processing time, depending on spacing.
+        **iterationsSecondShrinkwrap (int): >0, The more iterations, the more precise this final result will be. WARNING: Will increase processing time, depending on spacing.
+        **raycastSearchEdgeLength (double): >0, If one edge of a face is longer than this, it is used in this step.
+        **raycastOutputEdgeLength (double): >0, Length of these edges after subdivision. The shorter this length, the more the raycasting will possibly hit spongious parts inside fracture gaps.
+        **raycastMaxHitDistance (double): >0, Maximal distance between two hits. This setting is to prevent accidental hits way of the other hits.
+        **raycastMaxLength (double): >0, Maximal length of the ray.
+        **raycastMinLength (double): >=0, Minimal length of the ray.
+        **maxModelDistance (double): >=0, If a vertex of the surface model is farer away from the segmented model, it gets deleted with it faces.
+        **solidificationThickness (double): >0, Thickness of the solidified surface model. The solidification is performed. It is performed to the inside of the model.
+        **smoothingFactor (double): 0-1, Smoothing of the surface representation. This factor is also used on the output surface model and segmentation.
 
     
     Returns:
-        [bool] -- [description]
+        bool: Should return True.
     """
 
     
