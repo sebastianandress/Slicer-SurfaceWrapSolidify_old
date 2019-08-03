@@ -7,7 +7,7 @@ import math
 import vtkSegmentationCorePython
 
 class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
-  """This effect uses Watershed algorithm to partition the input volume"""
+  """This effect uses shrinkwrap, raycasting, remesh, and solidifying algorithms to filter the surface from the input segmentation"""
 
   def __init__(self, scriptedEffect):
     scriptedEffect.name = 'SRS-Filter'
@@ -245,7 +245,8 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
   def onApply(self):
 
     self.scriptedEffect.saveStateForUndo()
-    
+
+    self.applyButton.text = 'Working...'
     qt.QApplication.setOverrideCursor(qt.Qt.WaitCursor)
 
     #TODO: check if segment is not empty
@@ -261,6 +262,7 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
     self.logic.ApplySRSFilter(seg, segID, **kwargs)
 
     qt.QApplication.restoreOverrideCursor()
+    self.applyButton.text = 'Apply'
 
 
   def addLog(self, text):
@@ -326,8 +328,6 @@ class SRSFilterLogic(object):
     self.segLogic = slicer.vtkSlicerSegmentationsModuleLogic
     self.modelsLogic = slicer.modules.models.logic()
 
-    tempNodes = []
-
     def polydataToModel(polydata, smooth=True):
       if self.logCallback: self.logCallback('Creating Model...')
       
@@ -354,20 +354,17 @@ class SRSFilterLogic(object):
       tempSegment.SetColor(segmentationNode.GetSegmentation().GetSegment(segmentID).GetColor())
       tempSegment.AddRepresentation(vtkSegmentationCorePython.vtkSegmentationConverter.GetSegmentationClosedSurfaceRepresentationName(), polydata)
       segmentationNode.GetSegmentation().GetSegment(segmentID).DeepCopy(tempSegment)
-      
-      # Update views
       segmentationNode.Modified()
-      if segmentationNode.GetDisplayNode():
-        segmentationNode.GetDisplayNode().SetPreferredDisplayRepresentationName3D(vtkSegmentationCorePython.vtkSegmentationConverter.GetSegmentationClosedSurfaceRepresentationName())
+      segmentationNode.RemoveClosedSurfaceRepresentation()
       segmentationNode.CreateClosedSurfaceRepresentation()
-
+      
+      if segmentationNode.GetDisplayNode():
+        segmentationNode.GetDisplayNode().UpdateScene(slicer.mrmlScene)
+      
+      
       return True
 
     def cleanup():
-      for node in tempNodes:
-        if node:
-          slicer.mrmlScene.RemoveNode(node)
-      
       if self.logCallback: self.logCallback('')
 
     def remeshPolydata(polydata, spacing):
@@ -448,12 +445,19 @@ class SRSFilterLogic(object):
 
 
     if self.logCallback: self.logCallback('Filtering process started...')
-
+    
+    segmentationNode.GetSegmentation().SetConversionParameter(slicer.vtkBinaryLabelmapToClosedSurfaceConversionRule().GetSmoothingFactorParameterName(), str(options[ARG_SMOOTHINGFACTOR]))
+    # segmentationNode.GetSegmentation().SetConversionParameter(slicer.vtkBinaryLabelmapToClosedSurfaceConversionRule().GetSmoothingFactorParameterName(), str(0.0))
+    # segmentationNode.GetSegmentation().RemoveRepresentation(slicer.vtkSegmentationConverter().GetSegmentationClosedSurfaceRepresentationName())
+    # segmentationNode.GetSegmentation().CreateRepresentation(slicer.vtkSegmentationConverter().GetSegmentationClosedSurfaceRepresentationName(), True)
+    segmentationNode.RemoveClosedSurfaceRepresentation()
     segmentationNode.CreateClosedSurfaceRepresentation()
-    segmentationNode.CreateBinaryLabelmapRepresentation()
+    segmentationNode.Modified()
+    if segmentationNode.GetDisplayNode():
+      segmentationNode.GetDisplayNode().UpdateScene(slicer.mrmlScene)
+    segmentationNode.Modified()
     segment = segmentationNode.GetSegmentation().GetSegment(segmentID)
-    inputPolyData = segment.GetRepresentation(vtkSegmentationCorePython.vtkSegmentationConverter.GetSegmentationClosedSurfaceRepresentationName())
-    inputSegmentLabelmap = segment.GetRepresentation(vtkSegmentationCorePython.vtkSegmentationConverter.GetSegmentationBinaryLabelmapRepresentationName())
+    inputPolyData = segment.GetRepresentation(slicer.vtkSegmentationConverter().GetSegmentationClosedSurfaceRepresentationName())
 
 
     #region create sphere
