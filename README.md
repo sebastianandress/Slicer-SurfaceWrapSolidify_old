@@ -28,27 +28,22 @@ The SRS-Filter uses the following pipeline to archive the filter result. Also th
     _space between red and turquoise lines/segmentation_
     * __Iterations First Shrinkwrap__: The more iterations, the more precise this first result will be. _WARNING_: Will increase processing time, depending on spacing.
     * __Spacing First Remesh__: The resolution of the sphere model. The smaller the spacing and higher the resolution, the more precise this first output result will be. _WARNING_: Will drastically increase processing time. Especially for the first iteration, high resolution is not needed in most cases.\
-    _space between white vertex points_
+    _Space between white vertex points_
 
-4. Since holes deeper then broad will not be reached by shrinkwrapping, they are covered with long-edged faces. These faces are detected and separated.
+4. Since holes deeper then broad will not be reached by shrinkwrapping, they are covered with long-edged faces. These faces are detected and separated. The resulting vertices are raycasted along their normals to the hitting point on the segmented model, if they fulfil specific criterias described in the following parameters.
 
-    ![](/Resources/Media/description_2_1_subdivision.png =675x)
+    ![](/Resources/Media/description_2_raycastexplanation.png)
+    ![](/Resources/Media/description_2_raycast.png)
 
     * __Raycast Search Edge Length__: If one edge of a face is longer than this, it is used in this step.\
-    _length of red line between the two white points above the joint-cup representation in the third list item image_
+    _Image of step 3: length of red line between the two white points above the joint-cup representation_
     * __Raycast Output Edge Length__: Length of these edges after subdivision. The shorter this length, the more the raycasting will possibly hit spongious parts inside fracture gaps.\
-    _length of red lines between white points_
-
-    The resulting vertices are raycasted along their normals to the hitting point on the segmented model, if they fulfil specific criterias described in the following parameters.
-
-    ![](/Resources/Media/description_2_2_hits.png =675x)
-
+    _Upper left: length of red lines between white points_
     * __Raycast Max. Hit Distance__: Maximal distance between two hits. This setting is to prevent accidental hits way of the other hits.\
-    _grey circles around hits_
+    _Upper right: grey circles around hits_
     * __Raycast Max./Min. Length__: Maximal/Minimal length of the ray.\
-    _length of blue dotted line_
+    _Upper right: length of blue dotted line_
 
-    ![](/Resources/Media/description_2_raycast.png)
 
 5.  After an initial remeshing operation, another shrinkwrap-rememesh iteration finally approximates the former sphere model to the segmented model.
 
@@ -56,7 +51,7 @@ The SRS-Filter uses the following pipeline to archive the filter result. Also th
 
     * __Iterations Second Shrinkwrap__: The more iterations, the more precise this final result will be. _WARNING_: Will increase processing time, depending on spacing.
     * __Spacing Second Remesh__: The resolution of the surface model. The smaller the spacing and higher the resolution, the more precise the resulting surface model will be. _WARNING_: Will drastically increase processing time. A value of 1 mm^3 normally is enough depending on the original (CT/MRI) volume spacing.\
-    _space between white vertex points_
+    _Space between white vertex points_
 
 6. All vertices and faces of the surface model, that finally are not close to the segmented model, are deleted, resulting in a nonmanifold model.
 
