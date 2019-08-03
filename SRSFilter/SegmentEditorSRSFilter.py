@@ -14,7 +14,7 @@ class SegmentEditorSRSFilter(ScriptedLoadableModule):
     ScriptedLoadableModule.__init__(self, parent)
     self.parent.title = "SegmentEditorSRSFilter"
     self.parent.categories = ["Segmentation"]
-    self.parent.dependencies = ["Segmentations", "Models"]
+    self.parent.dependencies = ["Segmentations", "Models", "SegmentStatistics"]
     self.parent.contributors = ["Sebastian Andress (LMU Munich)"]
     self.parent.hidden = True
     self.parent.helpText = "This hidden module registers the segment editor effect"
@@ -30,6 +30,11 @@ class SegmentEditorSRSFilter(ScriptedLoadableModule):
     effectFilename = os.path.join(os.path.dirname(__file__), self.__class__.__name__+'Lib/SegmentEditorEffect.py')
     instance.setPythonSource(effectFilename.replace('\\','/'))
     instance.self().register()
+
+# class SegmentEditorSRSFilterWidget(ScriptedLoadableModuleWidget):
+
+#   def setup(self):
+#     ScriptedLoadableModuleWidget.setup(self)
 
 class SegmentEditorSRSFilterTest(ScriptedLoadableModuleTest):
   """
@@ -71,25 +76,25 @@ class SegmentEditorSRSFilterTest(ScriptedLoadableModuleTest):
     masterVolumeNode = SampleData.downloadSample('MRBrainTumor1')
 
     ##################################
-    self.delayDisplay("Create segmentation containing a few spheres")
+    self.delayDisplay("Create segmentation containing a two spheres")
 
     segmentationNode = slicer.mrmlScene.AddNewNodeByClass('vtkMRMLSegmentationNode')
     segmentationNode.CreateDefaultDisplayNodes()
     segmentationNode.SetReferenceImageGeometryParameterFromVolumeNode(masterVolumeNode)
+    
+    filterModes = ["CONVEXHULL", "RAYCASTS", "DEEPHULL", "SOLIDIFIED"]
+    spheres = [
+      [10, 4, 4, 4],
+      [10, -4,-4,-4]]
+    appender = vtk.vtkAppendPolyData()
+    for sphere in spheres:
+      sphereSource = vtk.vtkSphereSource()
+      sphereSource.SetRadius(sphere[0])
+      sphereSource.SetCenter(sphere[1], sphere[2], sphere[3])
+      appender.AddInputConnection(sphereSource.GetOutputPort())
 
-    # Segments are defined by a list of: name and a list of sphere [radius, posX, posY, posZ]
-    segmentGeometries = [
-      ['Tumor', [[10, -6,30,28]]],
-      ['Background', [[10, 0,65,22], [15, 1, -14, 30], [12, 0, 28, -7], [5, 0,30,54], [12, 31, 33, 27], [17, -42, 30, 27], [6, -2,-17,71]]],
-      ['Air', [[10, 76,73,0], [15, -70,74,0]]] ]
-    for segmentGeometry in segmentGeometries:
-      segmentName = segmentGeometry[0]
-      appender = vtk.vtkAppendPolyData()
-      for sphere in segmentGeometry[1]:
-        sphereSource = vtk.vtkSphereSource()
-        sphereSource.SetRadius(sphere[0])
-        sphereSource.SetCenter(sphere[1], sphere[2], sphere[3])
-        appender.AddInputConnection(sphereSource.GetOutputPort())
+    for m in filterModes:
+      segmentName = str(m)
       segment = vtkSegmentationCore.vtkSegment()
       segment.SetName(segmentationNode.GetSegmentation().GenerateUniqueSegmentID(segmentName))
       appender.Update()
@@ -109,32 +114,50 @@ class SegmentEditorSRSFilterTest(ScriptedLoadableModuleTest):
     segmentEditorWidget.setMasterVolumeNode(masterVolumeNode)
 
     ##################################
-    self.delayDisplay("Run segmentation")
-    segmentEditorWidget.setActiveEffectByName("SRSFilter")
+    self.delayDisplay("Run SRS-Filter Effect")
+    segmentEditorWidget.setActiveEffectByName("SRS-Filter")
     effect = segmentEditorWidget.activeEffect()
-    effect.setParameter("ObjectScaleMm", 3.0)
-    effect.self().onApply()
+
+    for t in ["MODEL", "SEGMENTATION"]:
+      effect.setParameter("outputType", t)
+      for m in filterModes:
+        self.delayDisplay("Creating Output Type %s, Filter Mode %s" %(t,m))
+        effect.setParameter("filterMode", m)
+        segmentEditorWidget.setCurrentSegmentID(segmentationNode.GetSegmentation().GetSegmentIdBySegmentName(m))
+        effect.self().onApply()
 
     ##################################
-    self.delayDisplay("Make segmentation results nicely visible in 3D")
-    segmentationDisplayNode = segmentationNode.GetDisplayNode()
-    segmentationDisplayNode.SetSegmentVisibility("Air", False)
-    segmentationDisplayNode.SetSegmentOpacity3D("Background",0.5)
+    self.delayDisplay("Creating Segments from Models")
+    for m in filterModes:
+      model = slicer.util.getNode(m)
+      segmentName = "MODEL_%s" % m
+      segment = vtkSegmentationCore.vtkSegment()
+      segment.SetName(segmentationNode.GetSegmentation().GenerateUniqueSegmentID(segmentName))
+      segment.SetColor(model.GetDisplayNode().GetColor())
+      segment.AddRepresentation(vtkSegmentationCore.vtkSegmentationConverter.GetSegmentationClosedSurfaceRepresentationName(), model.GetPolyData())
+      segmentationNode.GetSegmentation().AddSegment(segment)
 
     ##################################
     self.delayDisplay("Compute statistics")
-
     segStatLogic = SegmentStatisticsLogic()
-    segStatLogic.computeStatistics(segmentationNode, masterVolumeNode)
+    segStatLogic.getParameterNode().SetParameter("Segmentation", segmentationNode.GetID())
+    segStatLogic.getParameterNode().SetParameter("ScalarVolume", masterVolumeNode.GetID())
+    segStatLogic.computeStatistics()
+    statistics = segStatLogic.getStatistics()
 
-    # Export results to table (just to see all results)
-    resultsTableNode = slicer.vtkMRMLTableNode()
-    slicer.mrmlScene.AddNode(resultsTableNode)
-    segStatLogic.exportToTable(resultsTableNode)
-    segStatLogic.showTable(resultsTableNode)
-
+    ##################################
     self.delayDisplay("Check a few numerical results")
-    self.assertEqual( round(segStatLogic.statistics["Tumor","LM volume cc"]), 16)
-    self.assertEqual( round(segStatLogic.statistics["Background","LM volume cc"]), 3010)
+    
+    self.assertEqual( round(statistics["CONVEXHULL",'ScalarVolumeSegmentStatisticsPlugin.volume_mm3']), 47896)
+    self.assertEqual( round(statistics["MODEL_CONVEXHULL",'ScalarVolumeSegmentStatisticsPlugin.volume_mm3']), 47896)
 
+    self.assertEqual( round(statistics["RAYCASTS",'ScalarVolumeSegmentStatisticsPlugin.volume_mm3']), 41628)
+    self.assertEqual( round(statistics["MODEL_RAYCASTS",'ScalarVolumeSegmentStatisticsPlugin.volume_mm3']), 41628)
+
+    self.assertEqual( round(statistics["DEEPHULL",'ScalarVolumeSegmentStatisticsPlugin.volume_mm3']), 6450)
+    self.assertEqual( round(statistics["MODEL_DEEPHULL",'ScalarVolumeSegmentStatisticsPlugin.volume_mm3']), 6450)
+
+    self.assertEqual( round(statistics["SOLIDIFIED",'ScalarVolumeSegmentStatisticsPlugin.volume_mm3']), 2477)
+    self.assertEqual( round(statistics["MODEL_SOLIDIFIED",'ScalarVolumeSegmentStatisticsPlugin.volume_mm3']), 2477)
+    
     self.delayDisplay('test_SRSFilter1 passed')
