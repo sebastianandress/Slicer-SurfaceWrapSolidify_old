@@ -215,9 +215,9 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
   #
 
   def disableOptionsLayout(self):
-    [f['element'].setEnabled(True) for f in self.filterModes if f.has_key('element')]
-    [f['element'].setEnabled(True) for f in self.outputTypes if f.has_key('element')]
-    [f['element'].setEnabled(True) for f in self.parameters if f.has_key('element')]
+    [f['element'].setEnabled(True) for f in self.filterModes if 'element' in f]
+    [f['element'].setEnabled(True) for f in self.outputTypes if 'element' in f]
+    [f['element'].setEnabled(True) for f in self.parameters if 'element' in f]
     if self.scriptedEffect.parameter(ARG_FILTERMODE) == MODE_SOLIDIFIED: return
     
     [f['element'].setEnabled(False) for f in self.parameters if f['id'] == ARG_SOLIDIFICATIONTHICKNESS]
@@ -517,7 +517,7 @@ class SRSFilterLogic(object):
 
       points = shrinkModelPD.GetPoints()
 
-      for i in xrange(points.GetNumberOfPoints()):
+      for i in range(points.GetNumberOfPoints()):
         originPoint = np.array(points.GetPoint(i))
         closestPoint = np.array([0.0,0.0,0.0])
         cell = vtk.vtkGenericCell()
@@ -657,7 +657,7 @@ class SRSFilterLogic(object):
             pointId = pointIds.GetId(p)
 
             # check if cell with point was large before subdividion, and if point got checked already
-            if not pointId in largePointIds or (vert_location_dict.has_key(pointId) and vert_location_dict[pointId][0] == False):
+            if not pointId in largePointIds or ((pointId in vert_location_dict) and vert_location_dict[pointId][0] == False):
               
               # random False value, won't be moved
               vert_location_dict.update({pointId:(False,np.array([0.0,0.0,0.0]),0.0)})
@@ -702,12 +702,12 @@ class SRSFilterLogic(object):
             cellIds = vtk.vtkIdList()
             shrinkModelPD.GetPointCells(i, cellIds)
             pointChanged = False
-            for c in xrange(cellIds.GetNumberOfIds()):
+            for c in range(cellIds.GetNumberOfIds()):
               if pointChanged == True:
                 break
               cell = shrinkModelPD.GetCell(cellIds.GetId(c))
               pointIds = cell.GetPointIds()
-              for p in xrange(pointIds.GetNumberOfIds()):
+              for p in range(pointIds.GetNumberOfIds()):
                 if pointChanged == True:
                   break
                 pointId = pointIds.GetId(p)
@@ -792,7 +792,7 @@ class SRSFilterLogic(object):
     for c in range(nonsolidPolyData.GetNumberOfCells()):
       cell = nonsolidPolyData.GetCell(c)
       points = cell.GetPoints()
-      for p in xrange(points.GetNumberOfPoints()):
+      for p in range(points.GetNumberOfPoints()):
         point = points.GetPoint(p)
         distance = implicitDistance.EvaluateFunction(point)
 
