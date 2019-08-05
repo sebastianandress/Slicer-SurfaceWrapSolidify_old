@@ -122,6 +122,7 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
     advancedSettingsFrame.title = "Advanced Settings"
     advancedSettingsFrame.collapsed = True
     advancedSettingsFrame.setLayout(qt.QFormLayout())
+    self.scriptedEffect.addOptionsWidget(advancedSettingsFrame)
 
     for param in self.parameters:
       param['element'] = slicer.qMRMLSliderWidget()
@@ -137,7 +138,15 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
       advancedSettingsFrame.layout().addRow(param['name'], param['element'])
       param['element'].connect('valueChanged(double)', self.updateMRMLFromGUI)
     
-    self.scriptedEffect.addOptionsWidget(advancedSettingsFrame)
+    # Default Parameters Button
+
+    self.defaultParametersButton = qt.QPushButton("Reset Parameters")
+    self.defaultParametersButton.objectName = self.__class__.__name__ + 'ResetParameters'
+    self.defaultParametersButton.setToolTip("")
+    self.scriptedEffect.addOptionsWidget(self.defaultParametersButton)
+    self.defaultParametersButton.connect('clicked()', self.onSetDefaultParameters)
+
+    advancedSettingsFrame.layout().addRow(self.defaultParametersButton)
 
     # Apply Button
 
@@ -270,6 +279,10 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
     qt.QApplication.restoreOverrideCursor()
     self.applyButton.text = 'Apply'
 
+  def onSetDefaultParameters(self):
+    for param in self.parameters:
+      if 'element' in param:
+        param['element'].value = param['default']
 
   def addLog(self, text):
     slicer.util.showStatusMessage(text)
