@@ -6,14 +6,14 @@ For further collaborations, patient studies or any help, do not hesitate to cont
 # Shrinkwrap-Raycast-Shrinkwrap (SRS) Surface Filter
 
 ## Introduction
-This filter was designed for creating fractured bone models for fast 3D printing. Especially in orthopedic trauma surgery, the editing time, as well as the printing time should be as short as possible. Using this filter helps to fulfil both features. Also, by removing inner spongious structures, it is possible to archive a fracture reduction on the printed model.
+This filter was designed for creating fractured bone models for fast 3D printing. Especially in orthopedic trauma surgery, the editing time, as well as the printing time should be as short as possible. Using this filter helps to fulfil both features. Also, by removing inner cancellous structures, it is possible to achieve a fracture reduction on the printed model.
 
 In our use-case, we used this filter after applying a simple threshold operation and separating the bone with simple brushing and island techniques. Please watch the [workflow example](#Workflow-Example) videos. The filter was tested on more than 30 acetabular fracture models, it reduced the printing time about 70%.
 
 ![](/Resources/Screenshots/screenshot1.png)
 
 ## Principle Description and Parameters
-The SRS-Filter uses the following pipeline to archive the filter result. Also the related parameters are explained.
+The SRS-Filter uses the following pipeline to achieve the filter result. Also the related parameters are explained.
 
 1. A surface representation of the selected segment is created (segmented model).
     * __Smoothing Factor__: Smoothing of the surface representation. This factor is also used on the output surface model and segmentation.
@@ -37,7 +37,7 @@ The SRS-Filter uses the following pipeline to archive the filter result. Also th
 
     * __Raycast Search Edge Length__: If one edge of a face is longer than this, it is used in this step.\
     _Image of step 3: length of red line between the two white points above the joint-cup representation_
-    * __Raycast Output Edge Length__: Length of these edges after subdivision. The shorter this length, the more the raycasting will possibly hit spongious parts inside fracture gaps.\
+    * __Raycast Output Edge Length__: Length of these edges after subdivision. The shorter this length, the more the raycasting will possibly hit cancellous parts inside fracture gaps.\
     _Upper left: length of red lines between white points_
     * __Raycast Max. Hit Distance__: Maximal distance between two hits. This setting is to prevent accidental hits way of the other hits.\
     _Upper right: grey circles around hits_
@@ -90,7 +90,7 @@ The SRS-Filter uses the following pipeline to archive the filter result. Also th
 ## Results
 To see the creation of the results, please see the [Workflow Example](#Workflow-Example) section.
 
-After a common threshold procedure and slightly manual edits, the resulting segmentation shows parts of the cartilage and spongious bone.
+After a common threshold procedure and slightly manual edits, the resulting segmentation shows parts of the cartilage and cancellous bone.
  
 ![](/Resources/Media/result_seg_threshold.gif)
 
