@@ -4,7 +4,7 @@ import vtk, qt, ctk, slicer
 from slicer.ScriptedLoadableModule import *
 import logging
 
-class SegmentEditorSRSFilter(ScriptedLoadableModule):
+class SegmentEditorWrapSolidify(ScriptedLoadableModule):
   """Uses ScriptedLoadableModule base class, available at:
   https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
   """
@@ -12,7 +12,7 @@ class SegmentEditorSRSFilter(ScriptedLoadableModule):
   def __init__(self, parent):
     import string
     ScriptedLoadableModule.__init__(self, parent)
-    self.parent.title = "SegmentEditorSRSFilter"
+    self.parent.title = "SegmentEditorWrapSolidify"
     self.parent.categories = ["Segmentation"]
     self.parent.dependencies = ["Segmentations", "Models", "SegmentStatistics"]
     self.parent.contributors = ["Sebastian Andress (LMU Munich)"]
@@ -31,12 +31,12 @@ class SegmentEditorSRSFilter(ScriptedLoadableModule):
     instance.setPythonSource(effectFilename.replace('\\','/'))
     instance.self().register()
 
-# class SegmentEditorSRSFilterWidget(ScriptedLoadableModuleWidget):
+# class SegmentEditorWrapSolidifyWidget(ScriptedLoadableModuleWidget):
 
 #   def setup(self):
 #     ScriptedLoadableModuleWidget.setup(self)
 
-class SegmentEditorSRSFilterTest(ScriptedLoadableModuleTest):
+class SegmentEditorWrapSolidifyTest(ScriptedLoadableModuleTest):
   """
   This is the test case for your scripted module.
   Uses ScriptedLoadableModuleTest base class, available at:
@@ -52,18 +52,18 @@ class SegmentEditorSRSFilterTest(ScriptedLoadableModuleTest):
     """Run as few or as many tests as needed here.
     """
     self.setUp()
-    self.test_SRSFilter1()
+    self.test_WrapSolidify1()
 
-  def test_SRSFilter1(self):
+  def test_WrapSolidify1(self):
     """
     Basic automated test of the segmentation method:
     - Create segmentation by placing sphere-shaped seeds
     - Run segmentation
     - Verify results using segment statistics
-    The test can be executed from SelfTests module (test name: SegmentEditorSRSFilter)
+    The test can be executed from SelfTests module (test name: SegmentEditorWrapSolidify)
     """
 
-    self.delayDisplay("Starting test_SRSFilter1")
+    self.delayDisplay("Starting test_WrapSolidify1")
 
     import vtkSegmentationCorePython as vtkSegmentationCore
     import vtkSlicerSegmentationsModuleLogicPython as vtkSlicerSegmentationsModuleLogic
@@ -114,8 +114,8 @@ class SegmentEditorSRSFilterTest(ScriptedLoadableModuleTest):
     segmentEditorWidget.setMasterVolumeNode(masterVolumeNode)
 
     ##################################
-    self.delayDisplay("Run SRS-Filter Effect")
-    segmentEditorWidget.setActiveEffectByName("SRS-Filter")
+    self.delayDisplay("Run WrapSolidify Effect")
+    segmentEditorWidget.setActiveEffectByName("WrapSolidify")
     effect = segmentEditorWidget.activeEffect()
 
     for t in ["MODEL", "SEGMENTATION"]:
@@ -160,4 +160,4 @@ class SegmentEditorSRSFilterTest(ScriptedLoadableModuleTest):
     self.assertEqual( round(statistics["SOLIDIFIED",'ScalarVolumeSegmentStatisticsPlugin.volume_mm3']), 2477)
     self.assertEqual( round(statistics["MODEL_SOLIDIFIED",'ScalarVolumeSegmentStatisticsPlugin.volume_mm3']), 2477)
     
-    self.delayDisplay('test_SRSFilter1 passed')
+    self.delayDisplay('test_WrapSolidify1 passed')

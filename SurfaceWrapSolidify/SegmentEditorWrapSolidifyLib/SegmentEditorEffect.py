@@ -10,11 +10,11 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
   """This effect uses shrinkwrap, raycasting, remesh, and solidifying algorithms to filter the surface from the input segmentation"""
 
   def __init__(self, scriptedEffect):
-    scriptedEffect.name = 'SRS-Filter'
+    scriptedEffect.name = 'Wrap Solidify'
     scriptedEffect.perSegment = True # this effect operates on all segments at once (not on a single selected segment)
     AbstractScriptedSegmentEditorEffect.__init__(self, scriptedEffect)
 
-    self.logic = SRSFilterLogic(scriptedEffect)
+    self.logic = WrapSolidifyLogic(scriptedEffect)
     self.logic.logCallback = self.addLog
 
     # parameters
@@ -73,7 +73,7 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
     <li>Solidified Surface: Solidification Thickness.</li>
     </ol><br>
     
-    Current parameters are especially fitted for working on fractured hemipelvic bone segmentation. For further information, license, disclaimers and possible research partnerships visit <a href="https://github.com/sebastianandress/Slicer-SegmentEditorSRSFilter">this</a> github repository.
+    Current parameters are especially fitted for working on fractured hemipelvic bone segmentation. For further information, license, disclaimers and possible research partnerships visit <a href="https://github.com/sebastianandress/Slicer-SurfaceWrapSolidify">this</a> github repository.
     </html>"""
 
   def activate(self):
@@ -274,7 +274,7 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
       kwargs.update({arg['id']:self.scriptedEffect.doubleParameter(arg['id'])})
     kwargs.update({ARG_FILTERMODE:self.scriptedEffect.parameter(ARG_FILTERMODE)})
     kwargs.update({ARG_OUTPUTTYPE:self.scriptedEffect.parameter(ARG_OUTPUTTYPE)})
-    self.logic.ApplySRSFilter(seg, segID, **kwargs)
+    self.logic.ApplyWrapSolidify(seg, segID, **kwargs)
 
     qt.QApplication.restoreOverrideCursor()
     self.applyButton.text = 'Apply'
@@ -290,7 +290,7 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
 
 
 
-class SRSFilterLogic(object):
+class WrapSolidifyLogic(object):
 
   def __init__(self, scriptedEffect):
     self.scriptedEffect = scriptedEffect
@@ -301,7 +301,7 @@ class SRSFilterLogic(object):
     logging.info("User requested cancelling.")
     self.cancelRequested = True
 
-  def ApplySRSFilter(self, segmentationNode, segmentID, **kwargs):
+  def ApplyWrapSolidify(self, segmentationNode, segmentID, **kwargs):
     """Applies the Shrinkwrap-Raycast-Shrinkwrap Filter, a surface filter, to the selected passed segment.
     
     Arguments:
