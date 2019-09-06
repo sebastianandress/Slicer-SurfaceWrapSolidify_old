@@ -1,6 +1,6 @@
 
 #-----------------------------------------------------------------------------
-set(MODULE_NAME SegmentEditorSRSFilter)
+set(MODULE_NAME SegmentEditorWrapSolidify)
 
 #-----------------------------------------------------------------------------
 set(MODULE_PYTHON_SCRIPTS

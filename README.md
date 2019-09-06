@@ -1,19 +1,20 @@
 **Copyright (c) 2019, Sebastian Andreß**\
-All rights reserved. Please find the license [here](https://github.com/sebastianandress/Slicer-SegmentEditorSRSFilter/blob/master/LICENSE.md).
+All rights reserved. Please find the license [here](https://github.com/sebastianandress/Slicer-SurfaceWrapSolidify/blob/master/LICENSE.md).
 
 For further collaborations, patient studies or any help, do not hesitate to contact [Sebastian Andreß, MD](mailto:sebastian.andress@med.uni-muenchen.de).
 
-# Shrinkwrap-Raycast-Shrinkwrap (SRS) Surface Filter
+# Surface Wrap Solidify
+**Segment Editor Effect for 3D Slicer**
 
 ## Introduction
-This filter was designed for creating fractured bone models for fast 3D printing. Especially in orthopedic trauma surgery, the editing time, as well as the printing time should be as short as possible. Using this filter helps to fulfil both features. Also, by removing inner cancellous structures, it is possible to achieve a fracture reduction on the printed model.
+This effect was designed for creating fractured bone models for fast 3D printing. Especially in orthopedic trauma surgery, the editing time, as well as the printing time should be as short as possible. Using this effect helps to fulfil both features. Also, by removing inner cancellous structures, it is possible to achieve a fracture reduction on the printed model.
 
-In our use-case, we used this filter after applying a simple threshold operation and separating the bone with simple brushing and island techniques. Please watch the [workflow example](#Workflow-Example) videos. The filter was tested on more than 30 acetabular fracture models, it reduced the printing time about 70%.
+In our use-case, we used this effect after applying a simple threshold operation and separating the bone with simple brushing and island techniques. Please watch the [workflow example](#Workflow-Example) videos. The effect was tested on more than 30 acetabular fracture models, it reduced the printing time about 70%.
 
 ![](/Resources/Screenshots/screenshot1.png)
 
 ## Principle Description and Parameters
-The SRS-Filter uses the following pipeline to achieve the filter result. Also the related parameters are explained.
+The Wrap Solidify Effect uses the following pipeline to achieve the effect result. Also the related parameters are explained.
 
 1. A surface representation of the selected segment is created (segmented model).
     * __Smoothing Factor__: Smoothing of the surface representation. This factor is also used on the output surface model and segmentation.
@@ -94,7 +95,7 @@ After a common threshold procedure and slightly manual edits, the resulting segm
  
 ![](/Resources/Media/result_seg_threshold.gif)
 
-Applying the SRS-Filter with the default settings results in the following segmentation.
+Applying the Wrap Solidify effect with the default settings results in the following segmentation.
 
 ![](/Resources/Media/result_seg_srs.gif)
 
@@ -117,12 +118,12 @@ The following interim results are possible:
 
 ## Workflow Example
 
-As described in the [Introduction](#Introduction), this filter was designed to create fast printable bones as easy and least time consuming as possible. The parameters are especially fitted for hemipelvic bones. The threshold and manual edit takes about 3 minutes, the filter itself another 2 minutes resulting in an printable bone. The filter itself reduces the printing time about 70 percent.
+As described in the [Introduction](#Introduction), this effect was designed to create fast printable bones as easy and least time consuming as possible. The parameters are especially fitted for hemipelvic bones. The threshold and manual edit takes about 3 minutes, the effect itself another 2 minutes resulting in an printable bone. The effect itself reduces the printing time about 70 percent.
 
 ### Threshold
 ![](/Resources/Media/workflow_threshold.gif)
 
-A thresholding operation between 300 and the maximal Houndsfiled units was performed, using the __Threshold__ Effect. By using the sphere brush, first the femoral head, and subsequently connecting parts in the sacroiliac joint were erased. Using the __Islands__ Effect, the exempted hemipelvis was added to an own segment.
+A thresholding operation between 300 and the maximal Houndsfiled units was performed, using the __Threshold__ effect. By using the sphere brush, first the femoral head, and subsequently connecting parts in the sacroiliac joint were erased. Using the __Islands__ effect, the exempted hemipelvis was added to an own segment.
 
 ### Filter process
 ![](/Resources/Media/workflow_processing.gif)
