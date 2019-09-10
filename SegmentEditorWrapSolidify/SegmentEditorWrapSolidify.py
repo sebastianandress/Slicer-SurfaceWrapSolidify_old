@@ -14,13 +14,13 @@ class SegmentEditorWrapSolidify(ScriptedLoadableModule):
     ScriptedLoadableModule.__init__(self, parent)
     self.parent.title = "SegmentEditorWrapSolidify"
     self.parent.categories = ["Segmentation"]
-    self.parent.dependencies = ["Segmentations", "Models", "SegmentStatistics"]
+    self.parent.dependencies = ["SegmentEditor", "Segmentations", "Models", "SegmentStatistics"]
     self.parent.contributors = ["Sebastian Andress (LMU Munich)"]
     self.parent.hidden = True
-    self.parent.helpText = "This hidden module registers the segment editor effect"
+    self.parent.helpText = "This hidden module registers the segment editor effect."
     self.parent.helpText += self.getDefaultModuleDocumentationLink()
     self.parent.acknowledgementText = """
-      This filter was developed by Sebastian Andress (LMU University Hospital Munich, Germany, Department of General-, Trauma- and Reconstructive Surgery).
+      This filter was created by Sebastian Andress (LMU University Hospital Munich, Germany, Department of General-, Trauma- and Reconstructive Surgery).
       """
     slicer.app.connect("startupCompleted()", self.registerEditorEffect)
 
