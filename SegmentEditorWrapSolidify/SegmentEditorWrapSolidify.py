@@ -14,7 +14,7 @@ class SegmentEditorWrapSolidify(ScriptedLoadableModule):
     ScriptedLoadableModule.__init__(self, parent)
     self.parent.title = "SegmentEditorWrapSolidify"
     self.parent.categories = ["Segmentation"]
-    self.parent.dependencies = ["SegmentEditor", "Segmentations", "Models", "SegmentStatistics"]
+    self.parent.dependencies = []
     self.parent.contributors = ["Sebastian Andress (LMU Munich)"]
     self.parent.hidden = True
     self.parent.helpText = "This hidden module registers the segment editor effect."
