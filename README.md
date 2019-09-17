@@ -121,12 +121,12 @@ The following interim results are possible:
 As described in the [Introduction](#Introduction), this effect was designed to create fast printable bones as easy and least time consuming as possible. The parameters are especially fitted for hemipelvic bones. The threshold and manual edit takes about 3 minutes, the effect itself another 2 minutes resulting in an printable bone. The effect itself reduces the printing time about 70 percent.
 
 ### Threshold
-![](/Resources/Media/workflow_threshold.gif)
+[![](/Resources/Media/workflow_threshold.png)](https://1drv.ms/v/s!AqzdGuIdWLfeiNpPVeR4AYf7swui8g)
 
 A thresholding operation between 300 and the maximal Houndsfiled units was performed, using the __Threshold__ effect. By using the sphere brush, first the femoral head, and subsequently connecting parts in the sacroiliac joint were erased. Using the __Islands__ effect, the exempted hemipelvis was added to an own segment.
 
 ### Filter process
-![](/Resources/Media/workflow_processing.gif)
+[![](/Resources/Media/workflow_processing.png)](https://1drv.ms/v/s!AqzdGuIdWLfeiNpOgzGybjGQTu4F4w)
 
 In this example, the processing time was 1:46 min on a Apple MacBook Pro 2017 (3,1 GHz Intel Core i7, Memory 16 GB).
 
