@@ -87,69 +87,143 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
 
 
   def setupOptionsFrame(self):
-    
-    # setup filter modes
 
-    self.filterModeLayout = qt.QVBoxLayout()
-    self.scriptedEffect.addLabeledOptionsWidget("Filter Mode:", self.filterModeLayout)
-    self.filterModeGroup = qt.QButtonGroup()
+    # output types
 
-    for i, mode in enumerate(self.filterModes):
-      mode['element'] = qt.QRadioButton(mode['name'])
-      self.filterModeGroup.addButton(mode['element'])
-      self.filterModeLayout.addWidget(mode['element'])
-      if mode['default']: mode['element'].setChecked(True)
-    
-    self.filterModeGroup.connect('buttonClicked(int)', self.updateMRMLFromGUI)
-
-    # setup output type
     self.outputTypeLayout = qt.QVBoxLayout()
-    self.scriptedEffect.addLabeledOptionsWidget("Output Type:", self.outputTypeLayout)
+    self.scriptedEffect.addLabeledOptionsWidget('Output Type: ', self.outputTypeLayout)
     self.outputTypeGroup = qt.QButtonGroup()
 
-    for i, out in enumerate(self.outputTypes):
-      out['element'] = qt.QRadioButton(out['name'])
-      self.outputTypeGroup.addButton(out['element'])
-      self.outputTypeLayout.addWidget(out['element'])
-      if out['default']: out['element'].setChecked(True)
+    self.outputSegmentationRadioButton = qt.QRadioButton('Segmentation')
+    self.outputTypeGroup.addButton(self.outputSegmentationRadioButton)
+    self.outputTypeLayout.addWidget(self.outputSegmentationRadioButton)
+    if DEFAULT_OUTPUTTYPE == OUTPUT_SEGMENTATION:
+      self.outputSegmentationRadioButton.setChecked(True)
+
+    self.outputModelRadioButton = qt.QRadioButton('Model')
+    self.outputTypeGroup.addButton(self.outputModelRadioButton)
+    self.outputTypeLayout.addWidget(self.outputModelRadioButton)
+    if DEFAULT_OUTPUTTYPE == OUTPUT_MODEL:
+      self.outputModelRadioButton.setChecked(True)
 
     self.outputTypeGroup.connect('buttonClicked(int)', self.updateMRMLFromGUI)
 
+    # smoothing factor
 
-    # setup parameters
+    self.smoothingFactorSlider = slicer.qMRMLSliderWidget()
+    self.smoothingFactorSlider.setMRMLScene(slicer.mrmlScene)
+    self.smoothingFactorSlider.minimum = 0
+    self.smoothingFactorSlider.maximum = 1
+    self.smoothingFactorSlider.singleStep = 0.1
+    self.smoothingFactorSlider.value = DEFAULT_SMOOTHINGFACTOR
+    self.smoothingFactorSlider.setToolTip('Smoothing Factor used for operation, as the a surface representation of the segmentation will be used for this algorithm.')
+    self.smoothingFactorSlider.connect('valueChanged(double)', self.updateMRMLFromGUI)
+    self.scriptedEffect.addLabeledOptionsWidget('Smoothing Factor: ', self.smoothingFactorSlider)
+
+    self.scriptedEffect.addOptionsWidget(qt.QLabel(''))
+
+    # spare out cavities
+
+    self.cavitiesCheckBox = qt.QCheckBox('Spare out Large Cavities')
+    self.cavitiesCheckBox.setChecked(False)
+    self.cavitiesCheckBox.connect('stateChanged(int)', self.updateMRMLFromGUI)
+    self.scriptedEffect.addOptionsWidget(self.cavitiesCheckBox)
+
+    self.cavitiesDiameterSlider = slicer.qMRMLSliderWidget()
+    self.cavitiesDiameterSlider.setMRMLScene(slicer.mrmlScene)
+    self.cavitiesDiameterSlider.setEnabled(False)
+    self.cavitiesDiameterSlider.minimum = 0.1
+    self.cavitiesDiameterSlider.maximum = 100.0
+    self.cavitiesDiameterSlider.singleStep = 0.1
+    self.cavitiesDiameterSlider.value = DEFAULT_CAVITIESDIAMETER
+    self.cavitiesDiameterSlider.suffix = 'mm'
+    self.cavitiesDiameterSlider.setToolTip('Cavities with larger diameter will not be solidified.')
+    self.cavitiesDiameterSlider.connect('valueChanged(double)', self.updateMRMLFromGUI)
+    self.scriptedEffect.addLabeledOptionsWidget('   Minimal Cavities Diameter: ', self.cavitiesDiameterSlider)
+
+    self.cavitiesDepthSlider = slicer.qMRMLSliderWidget()
+    self.cavitiesDepthSlider.setMRMLScene(slicer.mrmlScene)
+    self.cavitiesDepthSlider.setEnabled(False)
+    self.cavitiesDepthSlider.minimum = 0.1
+    self.cavitiesDepthSlider.maximum = 1000.0
+    self.cavitiesDepthSlider.singleStep = 0.1
+    self.cavitiesDepthSlider.value = DEFAULT_CAVITIESDEPTH
+    self.cavitiesDepthSlider.suffix = 'mm'
+    self.cavitiesDepthSlider.setToolTip('Deeper cavities will not be solidified.')
+    self.cavitiesDepthSlider.connect('valueChanged(double)', self.updateMRMLFromGUI)
+    self.scriptedEffect.addLabeledOptionsWidget('   Minimal Cavities Depth: ', self.cavitiesDepthSlider)
+
+    # wall solidify
+
+    self.wallSolidificationCheckBox = qt.QCheckBox('Wall Solidification')
+    self.wallSolidificationCheckBox.setChecked(False)
+    self.wallSolidificationCheckBox.connect('stateChanged(int)', self.updateMRMLFromGUI)
+    self.scriptedEffect.addOptionsWidget(self.wallSolidificationCheckBox)
+
+    self.wallThicknessSlider = slicer.qMRMLSliderWidget()
+    self.wallThicknessSlider.setMRMLScene(slicer.mrmlScene)
+    self.wallThicknessSlider.setEnabled(False)
+    self.wallThicknessSlider.minimum = 0.1
+    self.wallThicknessSlider.maximum = 20.0
+    self.wallThicknessSlider.singleStep = 0.1
+    self.wallThicknessSlider.value = DEFAULT_WALLTHICKNESS
+    self.wallThicknessSlider.suffix = 'mm'
+    self.wallThicknessSlider.setToolTip('Thickness of the output wall.\nCAVE: If this smaller than the spacing of the input segmentation, it might appear punctured in the output. Please select "Model" as output type then.')
+    self.wallThicknessSlider.connect('valueChanged(double)', self.updateMRMLFromGUI)
+    self.scriptedEffect.addLabeledOptionsWidget('   Output Wall Thickness: ', self.wallThicknessSlider)
+
+
+    # advanced options
+
+    self.scriptedEffect.addOptionsWidget(qt.QLabel(''))
+
     advancedSettingsFrame = ctk.ctkCollapsibleGroupBox()
     advancedSettingsFrame.objectName = 'advancedSettingsFrame'
-    advancedSettingsFrame.title = "Advanced Settings"
+    advancedSettingsFrame.title = "Advanced Options"
     advancedSettingsFrame.collapsed = True
     advancedSettingsFrame.setLayout(qt.QFormLayout())
     self.scriptedEffect.addOptionsWidget(advancedSettingsFrame)
 
-    for param in self.parameters:
-      param['element'] = slicer.qMRMLSliderWidget()
-      param['element'].setMRMLScene(slicer.mrmlScene)
-      #param['element'].quantity = "length" # get unit, precision, etc. from MRML unit node
-      param['element'].minimum = param['min']
-      param['element'].maximum = param['max']
-      param['element'].singleStep = param['step']
-      param['element'].value = param['default']
-      param['element'].suffix = param['suffix']
-      param['element'].setToolTip(param['tooltip'])
-      #self.scriptedEffect.addLabeledOptionsWidget(param['name'], param['element'])
-      advancedSettingsFrame.layout().addRow(param['name'], param['element'])
-      param['element'].connect('valueChanged(double)', self.updateMRMLFromGUI)
+    # nr of iterations (always last), default 5
+    self.iterationsSlider = slicer.qMRMLSliderWidget()
+    self.iterationsSlider.setMRMLScene(slicer.mrmlScene)
+    self.iterationsSlider.minimum = 0
+    self.iterationsSlider.maximum = 10
+    self.iterationsSlider.singleStep = 1
+    self.iterationsSlider.value = DEFAULT_ITERATIONS
+    self.iterationsSlider.suffix = ''
+    self.iterationsSlider.setToolTip('Increase this value if output seems not completely converged to input.\nCAVE: Increases computation time.')
+    advancedSettingsFrame.layout().addRow('Number of Shrinkwrap Iterations: ', self.iterationsSlider)
+    self.iterationsSlider.connect('valueChanged(double)', self.updateMRMLFromGUI)
     
-    # Default Parameters Button
+    # spacing (> 1 or volume min of all spacings)
+    self.spacingSlider = slicer.qMRMLSliderWidget()
+    self.spacingSlider.setMRMLScene(slicer.mrmlScene)
+    self.spacingSlider.minimum = 0.1
+    self.spacingSlider.maximum = 10
+    self.spacingSlider.singleStep = 0.1
+    self.spacingSlider.value = DEFAULT_SPACING
+    #TODO: set default depending on input volume
+    self.spacingSlider.suffix = 'mm^3'
+    self.spacingSlider.setToolTip('Increase this value if output seems terraced.\nCAVE: Drastically increases computation time.')
+    advancedSettingsFrame.layout().addRow('Remesh Spacing: ', self.spacingSlider)
+    self.spacingSlider.connect('valueChanged(double)', self.updateMRMLFromGUI)
 
-    self.defaultParametersButton = qt.QPushButton("Reset Parameters")
-    self.defaultParametersButton.objectName = self.__class__.__name__ + 'ResetParameters'
-    self.defaultParametersButton.setToolTip("")
-    self.scriptedEffect.addOptionsWidget(self.defaultParametersButton)
-    self.defaultParametersButton.connect('clicked()', self.onSetDefaultParameters)
-
-    advancedSettingsFrame.layout().addRow(self.defaultParametersButton)
-
+    # shell to input distance
+    self.shellDistanceSlider = slicer.qMRMLSliderWidget()
+    self.shellDistanceSlider.setMRMLScene(slicer.mrmlScene)
+    self.shellDistanceSlider.minimum = -0.1
+    self.shellDistanceSlider.maximum = 10
+    self.shellDistanceSlider.singleStep = 0.1
+    self.shellDistanceSlider.value = DEFAULT_SHELLDISTANCE
+    self.shellDistanceSlider.suffix = 'mm'
+    self.shellDistanceSlider.setToolTip('Increase this value if output seems punctated. If "-0.1mm" is selected, no parts will be removed.\nCAVE: Might bridge areas (and therefore for example hide fracture gaps).')
+    advancedSettingsFrame.layout().addRow('Shell to Input Distance: ', self.shellDistanceSlider)
+    self.shellDistanceSlider.connect('valueChanged(double)', self.updateMRMLFromGUI)
+    
     # Apply Button
 
+    self.scriptedEffect.addOptionsWidget(qt.QLabel(''))
     self.applyButton = qt.QPushButton("Apply")
     self.applyButton.objectName = self.__class__.__name__ + 'Apply'
     self.applyButton.setToolTip("")
@@ -171,51 +245,71 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
     pass # For the sake of example
 
   def setMRMLDefaults(self):
-    for param in self.parameters:
-      self.scriptedEffect.setParameterDefault(param['id'], param['default'])
+    self.scriptedEffect.setParameterDefault(ARG_OUTPUTTYPE, DEFAULT_OUTPUTTYPE)
+    self.scriptedEffect.setParameterDefault(ARG_SMOOTHINGFACTOR, DEFAULT_SMOOTHINGFACTOR)
 
-    self.scriptedEffect.setParameterDefault(ARG_FILTERMODE, next(item for item in self.filterModes if item['default'] == True)['id'])
-    self.scriptedEffect.setParameterDefault(ARG_OUTPUTTYPE, next(item for item in self.outputTypes if item['default'] == True)['id'])
+    self.scriptedEffect.setParameterDefault(ARG_SPARECAVITIES, False)
+    self.scriptedEffect.setParameterDefault(ARG_CAVITIESDIAMETER, DEFAULT_CAVITIESDIAMETER)
+    self.scriptedEffect.setParameterDefault(ARG_CAVITIESDEPTH, DEFAULT_CAVITIESDEPTH)
+
+    self.scriptedEffect.setParameterDefault(ARG_SOLIDIFYWALL, False)
+    self.scriptedEffect.setParameterDefault(ARG_WALLTHICKNESS, DEFAULT_WALLTHICKNESS)
+    
+    self.scriptedEffect.setParameterDefault(ARG_ITERATIONS, DEFAULT_ITERATIONS)
+    self.scriptedEffect.setParameterDefault(ARG_SPACING, DEFAULT_SPACING)
+    self.scriptedEffect.setParameterDefault(ARG_SHELLDISTANCE, DEFAULT_SHELLDISTANCE)
 
   def updateGUIFromMRML(self):
-    for param in self.parameters:
-      value = self.scriptedEffect.doubleParameter(param['id'])
-      wasBlocked = param['element'].blockSignals(True)
-      param['element'].value = abs(value)
-      param['element'].blockSignals(wasBlocked)
-    
-    filterModeID = self.scriptedEffect.parameter(ARG_FILTERMODE)
-    for l in self.filterModes:
-      if l['id'] == filterModeID:
-        l['element'].setChecked(True)
-      else:
-        l['element'].setChecked(False)
+    for pId, pElement in [
+        (ARG_SMOOTHINGFACTOR, self.smoothingFactorSlider),
+        (ARG_CAVITIESDIAMETER, self.cavitiesDiameterSlider),
+        (ARG_CAVITIESDEPTH, self.cavitiesDepthSlider),
+        (ARG_WALLTHICKNESS, self.wallThicknessSlider),
+        (ARG_ITERATIONS, self.iterationsSlider),
+        (ARG_SPACING, self.spacingSlider),
+        (ARG_SHELLDISTANCE, self.shellDistanceSlider)
+      ]:
+      value = self.scriptedEffect.doubleParameter(pId)
+      wasBlocked = pElement.blockSignals(True)
+      pElement.value = value
+      pElement.blockSignals(wasBlocked)
     
     outputTypeID = self.scriptedEffect.parameter(ARG_OUTPUTTYPE)
-    
-    for t in self.outputTypes:
-      if t['id'] == outputTypeID:
-        t['element'].setChecked(True)
-      else:
-        t['element'].setChecked(False)
+    if OUTPUT_SEGMENTATION == outputTypeID:
+      self.outputSegmentationRadioButton.setChecked(True)
+      self.outputModelRadioButton.setChecked(False)
+    elif OUTPUT_MODEL == outputTypeID:
+      self.outputModelRadioButton.setChecked(True)
+      self.outputSegmentationRadioButton.setChecked(False)
 
-    self.disableOptionsLayout()
+    self.cavitiesCheckBox.setChecked(self.scriptedEffect.parameter(ARG_SPARECAVITIES)=='True')
+    self.wallSolidificationCheckBox.setChecked(self.scriptedEffect.parameter(ARG_SOLIDIFYWALL)=='True')
+    
+    self.disableOptions()
     self.cleanup()
     
 
   def updateMRMLFromGUI(self):
-    for param in self.parameters:
-      self.scriptedEffect.setParameter(param['id'], param['element'].value)
+    for pId, pElement in [
+        (ARG_SMOOTHINGFACTOR, self.smoothingFactorSlider),
+        (ARG_CAVITIESDIAMETER, self.cavitiesDiameterSlider),
+        (ARG_CAVITIESDEPTH, self.cavitiesDepthSlider),
+        (ARG_WALLTHICKNESS, self.wallThicknessSlider),
+        (ARG_ITERATIONS, self.iterationsSlider),
+        (ARG_SPACING, self.spacingSlider),
+        (ARG_SHELLDISTANCE, self.shellDistanceSlider)
+      ]:
+      self.scriptedEffect.setParameter(pId, pElement.value)
 
-    for mode in self.filterModes:
-      if mode['element'].isChecked():
-        self.scriptedEffect.setParameter(ARG_FILTERMODE, mode['id'])
-    
-    for typ in self.outputTypes:
-      if typ['element'].isChecked():
-        self.scriptedEffect.setParameter(ARG_OUTPUTTYPE, typ['id'])
+    if self.outputSegmentationRadioButton.isChecked():
+      self.scriptedEffect.setParameter(ARG_OUTPUTTYPE, OUTPUT_SEGMENTATION)
+    elif self.outputModelRadioButton.isChecked():
+      self.scriptedEffect.setParameter(ARG_OUTPUTTYPE, OUTPUT_MODEL)
 
-    self.disableOptionsLayout()
+    self.scriptedEffect.setParameter(ARG_SPARECAVITIES, self.cavitiesCheckBox.isChecked())
+    self.scriptedEffect.setParameter(ARG_SOLIDIFYWALL, self.wallSolidificationCheckBox.isChecked())
+
+    self.disableOptions()
     self.cleanup()
   
 
@@ -223,32 +317,21 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
   # Effect specific methods (the above ones are the API methods to override)
   #
 
-  def disableOptionsLayout(self):
-    [f['element'].setEnabled(True) for f in self.filterModes if 'element' in f]
-    [f['element'].setEnabled(True) for f in self.outputTypes if 'element' in f]
-    [f['element'].setEnabled(True) for f in self.parameters if 'element' in f]
-    if self.scriptedEffect.parameter(ARG_FILTERMODE) == MODE_SOLIDIFIED: return
+  def disableOptions(self):
     
-    [f['element'].setEnabled(False) for f in self.parameters if f['id'] == ARG_SOLIDIFICATIONTHICKNESS]
-    if self.scriptedEffect.parameter(ARG_FILTERMODE) == MODE_NONMANIFOLD:
-      [f['element'].setEnabled(False) for f in self.outputTypes if f['id'] == OUTPUT_SEGMENTATION]
-      [f['element'].setChecked(True) for f in self.outputTypes if f['id'] == OUTPUT_MODEL]
-      return
-    
-    [f['element'].setEnabled(False) for f in self.parameters if f['id'] == ARG_MAXMODELSDISTANCE]
-    [f['element'].setEnabled(False) for f in self.parameters if f['id'] == ARG_SMOOTHINGFACTOR]
-    if self.scriptedEffect.parameter(ARG_FILTERMODE) == MODE_DEEPHULL: return
-    
-    [f['element'].setEnabled(False) for f in self.parameters if f['id'] == ARG_ITERATIONSSECONDSHRINKWRAP]
-    [f['element'].setEnabled(False) for f in self.parameters if f['id'] == ARG_SPACINGSECONDREMESH]    
-    if self.scriptedEffect.parameter(ARG_FILTERMODE) == MODE_RAYCASTS: return
+    if self.scriptedEffect.parameter(ARG_SPARECAVITIES)=='True':
+      self.cavitiesDiameterSlider.setEnabled(True)
+      self.cavitiesDepthSlider.setEnabled(True)
+    else:
+      self.cavitiesDiameterSlider.setEnabled(False)
+      self.cavitiesDepthSlider.setEnabled(False)
 
-    [f['element'].setEnabled(False) for f in self.parameters if f['id'] == ARG_RAYCASTMAXHITDISTANCE]
-    [f['element'].setEnabled(False) for f in self.parameters if f['id'] == ARG_RAYCASTMAXLENGTH]
-    [f['element'].setEnabled(False) for f in self.parameters if f['id'] == ARG_RAYCASTMINLENGTH]
-    [f['element'].setEnabled(False) for f in self.parameters if f['id'] == ARG_RAYCASTOUTPUTEDGELENGTH]
-    [f['element'].setEnabled(False) for f in self.parameters if f['id'] == ARG_RAYCASTSEARCHEDGELENGTH]
-    return
+    if self.scriptedEffect.parameter(ARG_SOLIDIFYWALL)=='True':
+      self.wallThicknessSlider.setEnabled(True)
+      self.shellDistanceSlider.setEnabled(True)
+    else:
+      self.wallThicknessSlider.setEnabled(False)
+      self.shellDistanceSlider.setEnabled(False)
 
 
   def onApply(self):
@@ -402,7 +485,8 @@ class WrapSolidifyLogic(object):
       bounds = [0]*6
       polydata.GetBounds(bounds)
 
-      #spacing = [spacing]*3
+      spacing = [spacing]*3
+      #spacing = [max(segmentationNode.GetBinaryLabelmapRepresentation(segmentID).GetSpacing())]*3
       whiteImage.SetSpacing(spacing)
 
       dim = [0]*3
@@ -971,8 +1055,37 @@ class WrapSolidifyLogic(object):
     logging.error('unknown filterMode.')
     return False
 
-      
 ARG_OUTPUTTYPE = 'outputType'
+OUTPUT_MODEL = 'modelOutput'
+OUTPUT_SEGMENTATION = 'segmentationOutput'
+DEFAULT_OUTPUTTYPE = OUTPUT_SEGMENTATION
+
+ARG_SMOOTHINGFACTOR = 'smoothingFactor'
+DEFAULT_SMOOTHINGFACTOR = 0.2
+
+ARG_SPARECAVITIES = 'spareCavities'
+ARG_CAVITIESDIAMETER = 'cavitiesDiameter'
+DEFAULT_CAVITIESDIAMETER = 20.0
+ARG_CAVITIESDEPTH = 'cavitiesDepth'
+DEFAULT_CAVITIESDEPTH = 100.0
+
+ARG_SOLIDIFYWALL = 'solidifyWall'
+ARG_WALLTHICKNESS = 'wallThickness'
+DEFAULT_WALLTHICKNESS = 1.5
+
+ARG_ITERATIONS = 'iterationsNr'
+DEFAULT_ITERATIONS = 5
+ARG_SPACING = 'spacing'
+DEFAULT_SPACING = 1
+ARG_SHELLDISTANCE = 'shellDistance'
+DEFAULT_SHELLDISTANCE = 0.7
+
+
+
+
+
+
+# old
 ARG_FILTERMODE = 'filterMode'
 ARG_OFFSETFIRSTSHRINKWRAP = 'offsetFirstShrinkwrap'
 ARG_SPACINGFIRSTREMESH = 'spacingFirstRemesh'
@@ -986,6 +1099,7 @@ ARG_RAYCASTMAXLENGTH = 'raycastMaxLength'
 ARG_RAYCASTMINLENGTH = 'raycastMinLength'
 ARG_MAXMODELSDISTANCE = 'maxModelDistance'
 ARG_SOLIDIFICATIONTHICKNESS = 'solidificationThickness'
+
 ARG_SMOOTHINGFACTOR = 'smoothingFactor'
 
 OUTPUT_MODEL = 'MODEL'
@@ -996,3 +1110,4 @@ MODE_RAYCASTS = 'RAYCASTS'
 MODE_DEEPHULL = 'DEEPHULL'
 MODE_NONMANIFOLD = 'NONMANIFOLD'
 MODE_SOLIDIFIED = 'SOLIDIFIED'
+
