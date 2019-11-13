@@ -34,18 +34,8 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
 
   def helpText(self):
     # TODO: adapt
-    return """<html>This Filter results in an even surface of the current segment<br>.
-    It is using a combination of shrinkwrapping, remeshing, raycasting and solidification algorithms. Because of the process, the following intermediate outputs are possible (with inheritting parameter dependencies):<br>
-
-    <ol style="margin: 0">
-    <li>Convex Hull: Offset First Shrinkwrap, Spacing First Remesh, Iterations First Shrinkwrap.</li>
-    <li>Raycast Result (especially for parameter testing reasons): Raycast Search/Output Edge Lenght, Raycast Max. Hit Distance, Raycast Max./Min. Length.</li>
-    <li>Deep Hull: Spacing Second Remesh, Iterations Second Shrinkwrap.</li>
-    <li>Nonsolid Model (especially for further processing in CAD software): Max. Model Distance, Smoothing Factor. WARNING: It is not possible to create a segment out of this nonsolid process result.</li>
-    <li>Solidified Surface: Solidification Thickness.</li>
-    </ol><br>
-    
-    Current parameters are especially fitted for working on fractured hemipelvic bone segmentation. For further information, license, disclaimers and possible research partnerships visit <a href="https://github.com/sebastianandress/Slicer-SurfaceWrapSolidify">this</a> github repository.
+    return """<html>This Filter results in an even surface of the current segment. It is using a combination of shrinkwrapping, projection and solidification algorithms.<br>
+    For further information, license, disclaimers and possible research partnerships visit <a href="https://github.com/sebastianandress/Slicer-SurfaceWrapSolidify">this</a> github repository.
     </html>"""
 
   def activate(self):
@@ -116,12 +106,12 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
     self.shellThicknessSlider = slicer.qMRMLSliderWidget()
     self.shellThicknessSlider.setMRMLScene(slicer.mrmlScene)
     self.shellThicknessSlider.setEnabled(False)
-    self.shellThicknessSlider.minimum = 0
+    self.shellThicknessSlider.minimum = -0.1
     self.shellThicknessSlider.maximum = 20.0
     self.shellThicknessSlider.singleStep = 0.1
     self.shellThicknessSlider.value = DEFAULT_SHELLTHICKNESS
     self.shellThicknessSlider.suffix = 'mm'
-    self.shellThicknessSlider.setToolTip('Thickness of the output shell.\nCAVE: If this smaller than the spacing of the input segmentation, it might appear punctured in the output. Please select "Model" as output type then.')
+    self.shellThicknessSlider.setToolTip('Thickness of the output shell.\nCAVE: If this smaller than the spacing of the input segmentation, it might appear punctured in the output. Please select "Model" as output type then. If <0, a nonmanifold mesh gets created, Segmentation will fail.')
     self.shellThicknessSlider.connect('valueChanged(double)', self.updateMRMLFromGUI)
     self.scriptedEffect.addLabeledOptionsWidget('   Output Shell Thickness: ', self.shellThicknessSlider)
 
@@ -216,7 +206,7 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
     self.shellDistanceSlider.singleStep = 0.1
     self.shellDistanceSlider.value = DEFAULT_SHELLDISTANCE
     self.shellDistanceSlider.suffix = 'mm'
-    self.shellDistanceSlider.setToolTip('Increase this value if output seems punctated. If "-0.1mm" is selected, no parts will be removed.\nCAVE: Might bridge areas (and therefore for example hide fracture gaps).')
+    self.shellDistanceSlider.setToolTip('Increase this value if output seems punctated. If <0 is selected, no parts will be removed.\nCAVE: Might bridge areas (and therefore for example hide fracture gaps).')
     advancedSettingsFrame.layout().addRow('Shell to Input Distance: ', self.shellDistanceSlider)
     self.shellDistanceSlider.connect('valueChanged(double)', self.updateMRMLFromGUI)
     
@@ -401,23 +391,21 @@ class WrapSolidifyLogic(object):
     """Applies the Shrinkwrap-Raycast-Shrinkwrap Filter, a surface filter, to the selected passed segment.
     
     Arguments:
-        segmentationNode (vtkMRMLSegmentationNode): [Segmentation Node the filter gets applied to.
+        segmentationNode (vtkMRMLSegmentationNode): Segmentation Node the filter gets applied to.
         segmentID (string): ID of the Segment the filter gets applied to. WARNING: The filter replaces the former segmentation.
+        modelNode (vtkMRMLModelNode): If 'MODEL' is selected as outputType, the polydata of this node gets updated.
         **outputType (string): Possible options: 'MODEL', 'SEGMENTATION'
-        **filterMode (string): Possible options: 'CONVEXHULL', 'RAYCASTS', 'DEEPHULL', 'NONMANIFOLD', 'SOLIDIFIED'
-        **offsetFirstShrinkwrap (double): >0, Distance between segment and surface model.
-        **spacingFirstRemesh (double): >0, The resolution of the surface model. The smaller the spacing and higher the resolution, the more precise this first output result will be. WARNING: Will drastically increase processing time. Especially for the first iteration, high resolution is not needed in most cases.
-        **spacingSecondRemesh (double): >0, The resolution of the surface model. The smaller the spacing and higher the resolution, the more precise the resulting surface model will be. WARNING: Will drastically increase processing time. A value of 1 mm^3 normally is enough depending on the original (CT/MRI) volume spacing.
-        **iterationsFirstShrinkwrap (int): >=0, The more iterations, the more precise this first result will be. WARNING: Will increase processing time, depending on spacing.
-        **iterationsSecondShrinkwrap (int): >0, The more iterations, the more precise this final result will be. WARNING: Will increase processing time, depending on spacing.
-        **raycastSearchEdgeLength (double): >0, If one edge of a face is longer than this, it is used in this step.
-        **raycastOutputEdgeLength (double): >0, Length of these edges after subdivision. The shorter this length, the more the raycasting will possibly hit spongious parts inside fracture gaps.
-        **raycastMaxHitDistance (double): >0, Maximal distance between two hits. This setting is to prevent accidental hits way of the other hits.
-        **raycastMaxLength (double): >0, Maximal length of the ray.
-        **raycastMinLength (double): >=0, Minimal length of the ray.
-        **maxModelDistance (double): >=0, If a vertex of the surface model is farer away from the segmented model, it gets deleted with it faces.
-        **solidificationThickness (double): >0, Thickness of the solidified surface model. The solidification is performed. It is performed to the inside of the model.
-        **smoothingFactor (double): 0-1, Smoothing of the surface representation. This factor is also used on the output surface model and segmentation.
+        **smoothingFactor (double): 0-1, Smoothing of the surface representation of the input used by this filter. This factor is also used on the output surface model and segmentation.
+        **carveCavities (bool): Solidification process also carves out deeper caves.
+        **cavitiesDiameter (double): 0.1-100, Entrance diameter of caves. Only used if carveCavities == True.
+        **cavitiesDepth (double): 0.1-1000, Depth of caves. Only used if carveCavities == True.
+        **createShell (bool): Whether or not the solidification will be done only for a outer shell.
+        **shellThickness (-0.1-10): Thickness of the shell. Only used if createShell == True. WARNING: If <0, a nonmanifold mesh gets created, Segmentation will fail.
+        **iterationsNr (1-10): Nr. of iterations of the shrinkwrap process.
+        **spacing (>1): Spacing of remesh process.
+        **shellDistance (-0.1-10): Maximal distance between input segmentation and shell, larger distant vertices get deleted. Only used if createShell == True. If <0, no vertex gets deleted.
+
+
 
     
     Returns:
@@ -846,24 +834,24 @@ class WrapSolidifyLogic(object):
 
     #region Main Shrinkwrap
 
-    for x in range(int(options[ARG_ITERATIONS])):
+    for x in range(int(options[ARG_ITERATIONS])+1):
       
       # remesh
       if self.cancelRequested:
         cleanup()
         return False
-      if self.logCallback: self.logCallback('Remeshing %s/%s...' %(x+1, int(options[ARG_ITERATIONS])))
+      if self.logCallback: self.logCallback('Remeshing %s/%s...' %(x+1, int(options[ARG_ITERATIONS]+1)))
       
       shrinkModelPD.DeepCopy(remeshPolydata(shrinkModelPD, [options[ARG_SPACING]]*3))
 
-      if x == int(options[ARG_ITERATIONS])-1 and options[ARG_CREATESHELL]:
+      if x == int(options[ARG_ITERATIONS]) and options[ARG_CREATESHELL]:
         break
 
       # shrink
       if self.cancelRequested:
         cleanup()
         return False
-      if self.logCallback: self.logCallback('Shrinking %s/%s...' %(x+1, int(options[ARG_ITERATIONS]-1 if options[ARG_CREATESHELL] else int(options[ARG_ITERATIONS]))))
+      if self.logCallback: self.logCallback('Shrinking %s/%s...' %(x+1, int(options[ARG_ITERATIONS] if options[ARG_CREATESHELL] else int(options[ARG_ITERATIONS]))))
 
       shrinkModelPD.DeepCopy(shrinkPolydata(shrinkModelPD, inputPolyData))
 
@@ -872,164 +860,169 @@ class WrapSolidifyLogic(object):
     #endregion
 
     if options[ARG_CREATESHELL]:
-
-      #region Remove Caps
-      if self.cancelRequested:
-        cleanup()
-        return False
-      if self.logCallback: self.logCallback('Removing Caps...')
-
-      # implicit distance, add point ids with larger distance to ids
-      implicitDistance = vtk.vtkImplicitPolyDataDistance()
-      implicitDistance.SetInput(inputPolyData)
       
-      # delete cells in great distance
-      nonsolidPolyData = vtk.vtkPolyData()
-      nonsolidPolyData.DeepCopy(shrinkModelPD)
-      nonsolidPolyData.BuildLinks()
+      #region Remove Caps
+      if options[ARG_SHELLDISTANCE] >= 0:
+        
+        if self.cancelRequested:
+          cleanup()
+          return False
+        if self.logCallback: self.logCallback('Removing Caps...')
 
-      for c in range(nonsolidPolyData.GetNumberOfCells()):
-        cell = nonsolidPolyData.GetCell(c)
-        points = cell.GetPoints()
-        for p in range(points.GetNumberOfPoints()):
-          point = points.GetPoint(p)
-          distance = implicitDistance.EvaluateFunction(point)
+        # implicit distance, add point ids with larger distance to ids
+        implicitDistance = vtk.vtkImplicitPolyDataDistance()
+        implicitDistance.SetInput(inputPolyData)
+        
+        # delete cells in great distance
+        nonsolidPolyData = vtk.vtkPolyData()
+        nonsolidPolyData.DeepCopy(shrinkModelPD)
+        nonsolidPolyData.BuildLinks()
 
-          if abs(distance) > options[ARG_SHELLDISTANCE]:
-            nonsolidPolyData.DeleteCell(c)
-            break
+        for c in range(nonsolidPolyData.GetNumberOfCells()):
+          cell = nonsolidPolyData.GetCell(c)
+          points = cell.GetPoints()
+          for p in range(points.GetNumberOfPoints()):
+            point = points.GetPoint(p)
+            distance = implicitDistance.EvaluateFunction(point)
 
-      nonsolidPolyData.RemoveDeletedCells()
-      shrinkModelPD.DeepCopy(nonsolidPolyData)
+            if abs(distance) > options[ARG_SHELLDISTANCE]:
+              nonsolidPolyData.DeleteCell(c)
+              break
+
+        nonsolidPolyData.RemoveDeletedCells()
+        shrinkModelPD.DeepCopy(nonsolidPolyData)
 
       #endregion
 
+
       #region Solidification
-      if self.cancelRequested:
-        cleanup()
-        return False
-      if self.logCallback: self.logCallback('Solidifying...')
-
-      # remove double vertices
-      cleanPolyData = vtk.vtkCleanPolyData()
-      cleanPolyData.SetInputData(shrinkModelPD)
-      cleanPolyData.Update()
-
-      # create normals
-      normals = vtk.vtkPolyDataNormals()
-      normals.SetComputeCellNormals(1)
-      normals.SetInputData(cleanPolyData.GetOutput())
-      normals.SplittingOff()
-      normals.Update()
-
-      #shrinkModelPD = vtk.vtkPolyData()
-      shrinkModelPD.DeepCopy(normals.GetOutput())
-      numberOfPoints = shrinkModelPD.GetNumberOfPoints()
-
-      # get boundary edges, used later
-      featureEdges = vtk.vtkFeatureEdges()
-      featureEdges.BoundaryEdgesOn()
-      featureEdges.ColoringOff()
-      featureEdges.FeatureEdgesOff()
-      featureEdges.NonManifoldEdgesOff()
-      featureEdges.ManifoldEdgesOff()
-      featureEdges.SetInputData(normals.GetOutput())
-      featureEdges.Update()
-
-      addingPoints = []
-      addingPolys = []
-
-
-      for pointID in range(numberOfPoints):
-        cellIDs = vtk.vtkIdList()
-        shrinkModelPD.GetPointCells(pointID, cellIDs)
-        normalsArray = []
-
+      if options[ARG_SHELLTHICKNESS] >= 0:
         
-        # ilterate through all cells/faces which contain point
-        for i in range(cellIDs.GetNumberOfIds()):
-          n = []
-          n.append(shrinkModelPD.GetCellData().GetArray('Normals').GetValue(cellIDs.GetId(i)*3))
-          n.append(shrinkModelPD.GetCellData().GetArray('Normals').GetValue(cellIDs.GetId(i)*3 + 1))
-          n.append(shrinkModelPD.GetCellData().GetArray('Normals').GetValue(cellIDs.GetId(i)*3 + 2))
+        if self.cancelRequested:
+          cleanup()
+          return False
+        if self.logCallback: self.logCallback('Solidifying...')
 
-          normalsArray.append(np.array(n) * (-1))
+        # remove double vertices
+        cleanPolyData = vtk.vtkCleanPolyData()
+        cleanPolyData.SetInputData(shrinkModelPD)
+        cleanPolyData.Update()
 
-        # calculate position of new vert
-        dir_vec = np.zeros(3)
-        
-        for n in normalsArray:
-          dir_vec = dir_vec + np.array(n)
+        # create normals
+        normals = vtk.vtkPolyDataNormals()
+        normals.SetComputeCellNormals(1)
+        normals.SetInputData(cleanPolyData.GetOutput())
+        normals.SplittingOff()
+        normals.Update()
 
-        dir_vec_norm = dir_vec / np.linalg.norm(dir_vec)
-        proj_length = np.dot(dir_vec_norm, np.array(normalsArray[0]))
-        dir_vec_finallenght = dir_vec_norm * proj_length
-        vertex_neu = np.array(shrinkModelPD.GetPoint(pointID)) + (dir_vec_finallenght * options[ARG_SHELLTHICKNESS])
-        
-        # append point
-        addingPoints.append(vertex_neu)
+        #shrinkModelPD = vtk.vtkPolyData()
+        shrinkModelPD.DeepCopy(normals.GetOutput())
+        numberOfPoints = shrinkModelPD.GetNumberOfPoints()
 
-      for cellID in range(shrinkModelPD.GetNumberOfCells()):
-        pointIDs = vtk.vtkIdList()
-        shrinkModelPD.GetCellPoints(cellID, pointIDs)
+        # get boundary edges, used later
+        featureEdges = vtk.vtkFeatureEdges()
+        featureEdges.BoundaryEdgesOn()
+        featureEdges.ColoringOff()
+        featureEdges.FeatureEdgesOff()
+        featureEdges.NonManifoldEdgesOff()
+        featureEdges.ManifoldEdgesOff()
+        featureEdges.SetInputData(normals.GetOutput())
+        featureEdges.Update()
 
-        newPointIDs = vtk.vtkIdList()
-        for i in reversed(range(pointIDs.GetNumberOfIds())):
-          newPointIDs.InsertNextId(int(pointIDs.GetId(i) + numberOfPoints))
+        addingPoints = []
+        addingPolys = []
 
-        addingPolys.append(newPointIDs)
 
-      doubleSurfacePoints = vtk.vtkPoints()
-      doubleSurfacePolys = vtk.vtkCellArray()
+        for pointID in range(numberOfPoints):
+          cellIDs = vtk.vtkIdList()
+          shrinkModelPD.GetPointCells(pointID, cellIDs)
+          normalsArray = []
 
-      doubleSurfacePoints.DeepCopy(shrinkModelPD.GetPoints())
-      doubleSurfacePolys.DeepCopy(shrinkModelPD.GetPolys())
+          
+          # ilterate through all cells/faces which contain point
+          for i in range(cellIDs.GetNumberOfIds()):
+            n = []
+            n.append(shrinkModelPD.GetCellData().GetArray('Normals').GetValue(cellIDs.GetId(i)*3))
+            n.append(shrinkModelPD.GetCellData().GetArray('Normals').GetValue(cellIDs.GetId(i)*3 + 1))
+            n.append(shrinkModelPD.GetCellData().GetArray('Normals').GetValue(cellIDs.GetId(i)*3 + 2))
 
-      for p in addingPoints:
-        doubleSurfacePoints.InsertNextPoint(p)
-      for p in addingPolys:
-        doubleSurfacePolys.InsertNextCell(p)
+            normalsArray.append(np.array(n) * (-1))
 
-      doubleSurfacePD = vtk.vtkPolyData()
-      doubleSurfacePD.SetPoints(doubleSurfacePoints)
-      doubleSurfacePD.SetPolys(doubleSurfacePolys)
+          # calculate position of new vert
+          dir_vec = np.zeros(3)
+          
+          for n in normalsArray:
+            dir_vec = dir_vec + np.array(n)
 
-      # add faces to boundary edges
-      mergePoints = vtk.vtkMergePoints()
-      mergePoints.InitPointInsertion(doubleSurfacePD.GetPoints(), doubleSurfacePD.GetBounds())
-      mergePoints.SetDataSet(doubleSurfacePD)
-      mergePoints.BuildLocator()
+          dir_vec_norm = dir_vec / np.linalg.norm(dir_vec)
+          proj_length = np.dot(dir_vec_norm, np.array(normalsArray[0]))
+          dir_vec_finallenght = dir_vec_norm * proj_length
+          vertex_neu = np.array(shrinkModelPD.GetPoint(pointID)) + (dir_vec_finallenght * options[ARG_SHELLTHICKNESS])
+          
+          # append point
+          addingPoints.append(vertex_neu)
 
-      manifoldPolys = vtk.vtkCellArray()
-      manifoldPolys.DeepCopy(doubleSurfacePD.GetPolys())
-      manifoldPoints = vtk.vtkPoints()
-      manifoldPoints.DeepCopy(doubleSurfacePD.GetPoints())
+        for cellID in range(shrinkModelPD.GetNumberOfCells()):
+          pointIDs = vtk.vtkIdList()
+          shrinkModelPD.GetCellPoints(cellID, pointIDs)
 
-      for e in range(featureEdges.GetOutput().GetNumberOfCells()):
-        pointIDs = vtk.vtkIdList()
-        featureEdges.GetOutput().GetCellPoints(e, pointIDs)
-        if pointIDs.GetNumberOfIds() == 2: # -> Edge
-          matchingPointIDs = []
           newPointIDs = vtk.vtkIdList()
-          for p in range(2):
-            matchingPointIDs.append(mergePoints.IsInsertedPoint(featureEdges.GetOutput().GetPoint(pointIDs.GetId(p))))
-          if not (-1) in matchingPointIDs: # edge vertex not found in original pd, should not happen
-            newPointIDs.InsertNextId(matchingPointIDs[1])
-            newPointIDs.InsertNextId(matchingPointIDs[0])
-            newPointIDs.InsertNextId(matchingPointIDs[0]+numberOfPoints)
-            newPointIDs.InsertNextId(matchingPointIDs[1]+numberOfPoints)
-            manifoldPolys.InsertNextCell(newPointIDs)
+          for i in reversed(range(pointIDs.GetNumberOfIds())):
+            newPointIDs.InsertNextId(int(pointIDs.GetId(i) + numberOfPoints))
 
-      manifoldPD = vtk.vtkPolyData()
-      manifoldPD.SetPoints(manifoldPoints)
-      manifoldPD.SetPolys(manifoldPolys)
+          addingPolys.append(newPointIDs)
 
-      triangleFilter = vtk.vtkTriangleFilter()
-      triangleFilter.SetInputData(manifoldPD)
-      triangleFilter.Update()
+        doubleSurfacePoints = vtk.vtkPoints()
+        doubleSurfacePolys = vtk.vtkCellArray()
 
-      shrinkModelPD = vtk.vtkPolyData()
-      shrinkModelPD.DeepCopy(triangleFilter.GetOutput())
+        doubleSurfacePoints.DeepCopy(shrinkModelPD.GetPoints())
+        doubleSurfacePolys.DeepCopy(shrinkModelPD.GetPolys())
+
+        for p in addingPoints:
+          doubleSurfacePoints.InsertNextPoint(p)
+        for p in addingPolys:
+          doubleSurfacePolys.InsertNextCell(p)
+
+        doubleSurfacePD = vtk.vtkPolyData()
+        doubleSurfacePD.SetPoints(doubleSurfacePoints)
+        doubleSurfacePD.SetPolys(doubleSurfacePolys)
+
+        # add faces to boundary edges
+        mergePoints = vtk.vtkMergePoints()
+        mergePoints.InitPointInsertion(doubleSurfacePD.GetPoints(), doubleSurfacePD.GetBounds())
+        mergePoints.SetDataSet(doubleSurfacePD)
+        mergePoints.BuildLocator()
+
+        manifoldPolys = vtk.vtkCellArray()
+        manifoldPolys.DeepCopy(doubleSurfacePD.GetPolys())
+        manifoldPoints = vtk.vtkPoints()
+        manifoldPoints.DeepCopy(doubleSurfacePD.GetPoints())
+
+        for e in range(featureEdges.GetOutput().GetNumberOfCells()):
+          pointIDs = vtk.vtkIdList()
+          featureEdges.GetOutput().GetCellPoints(e, pointIDs)
+          if pointIDs.GetNumberOfIds() == 2: # -> Edge
+            matchingPointIDs = []
+            newPointIDs = vtk.vtkIdList()
+            for p in range(2):
+              matchingPointIDs.append(mergePoints.IsInsertedPoint(featureEdges.GetOutput().GetPoint(pointIDs.GetId(p))))
+            if not (-1) in matchingPointIDs: # edge vertex not found in original pd, should not happen
+              newPointIDs.InsertNextId(matchingPointIDs[1])
+              newPointIDs.InsertNextId(matchingPointIDs[0])
+              newPointIDs.InsertNextId(matchingPointIDs[0]+numberOfPoints)
+              newPointIDs.InsertNextId(matchingPointIDs[1]+numberOfPoints)
+              manifoldPolys.InsertNextCell(newPointIDs)
+
+        manifoldPD = vtk.vtkPolyData()
+        manifoldPD.SetPoints(manifoldPoints)
+        manifoldPD.SetPolys(manifoldPolys)
+
+        triangleFilter = vtk.vtkTriangleFilter()
+        triangleFilter.SetInputData(manifoldPD)
+        triangleFilter.Update()
+
+        shrinkModelPD = vtk.vtkPolyData()
+        shrinkModelPD.DeepCopy(triangleFilter.GetOutput())
 
       #endregion
 
@@ -1070,8 +1063,8 @@ ARG_SHELLTHICKNESS = 'shellThickness'
 DEFAULT_SHELLTHICKNESS = 1.5
 
 ARG_OUTPUTTYPE = 'outputTypeWrapSolidify'
-OUTPUT_MODEL = 'modelOutput'
-OUTPUT_SEGMENTATION = 'segmentationOutput'
+OUTPUT_MODEL = 'MODEL'
+OUTPUT_SEGMENTATION = 'SEGMENTATION'
 DEFAULT_OUTPUTTYPE = OUTPUT_SEGMENTATION
 
 ARG_OUTPUTMODELNODE = 'outputModelNode'
