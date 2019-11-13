@@ -60,26 +60,6 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
 
   def setupOptionsFrame(self):
 
-    # output types
-
-    self.outputTypeLayout = qt.QVBoxLayout()
-    self.scriptedEffect.addLabeledOptionsWidget('Output Type: ', self.outputTypeLayout)
-    self.outputTypeGroup = qt.QButtonGroup()
-
-    self.outputSegmentationRadioButton = qt.QRadioButton('Segmentation')
-    self.outputTypeGroup.addButton(self.outputSegmentationRadioButton)
-    self.outputTypeLayout.addWidget(self.outputSegmentationRadioButton)
-    if DEFAULT_OUTPUTTYPE == OUTPUT_SEGMENTATION:
-      self.outputSegmentationRadioButton.setChecked(True)
-
-    self.outputModelRadioButton = qt.QRadioButton('Model')
-    self.outputTypeGroup.addButton(self.outputModelRadioButton)
-    self.outputTypeLayout.addWidget(self.outputModelRadioButton)
-    if DEFAULT_OUTPUTTYPE == OUTPUT_MODEL:
-      self.outputModelRadioButton.setChecked(True)
-
-    self.outputTypeGroup.connect('buttonClicked(int)', self.updateMRMLFromGUI)
-
     # smoothing factor
 
     self.smoothingFactorSlider = slicer.qMRMLSliderWidget()
@@ -91,6 +71,7 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
     self.smoothingFactorSlider.setToolTip('Smoothing Factor used for operation, as the a surface representation of the segmentation will be used for this algorithm.')
     self.smoothingFactorSlider.connect('valueChanged(double)', self.updateMRMLFromGUI)
     self.scriptedEffect.addLabeledOptionsWidget('Smoothing Factor: ', self.smoothingFactorSlider)
+
 
     self.scriptedEffect.addOptionsWidget(qt.QLabel(''))
 
@@ -143,6 +124,52 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
     self.shellThicknessSlider.setToolTip('Thickness of the output shell.\nCAVE: If this smaller than the spacing of the input segmentation, it might appear punctured in the output. Please select "Model" as output type then.')
     self.shellThicknessSlider.connect('valueChanged(double)', self.updateMRMLFromGUI)
     self.scriptedEffect.addLabeledOptionsWidget('   Output Shell Thickness: ', self.shellThicknessSlider)
+
+
+    self.scriptedEffect.addOptionsWidget(qt.QLabel(''))
+
+    # output types
+
+    self.outputTypeLayout = qt.QVBoxLayout()
+    self.scriptedEffect.addLabeledOptionsWidget('Output Type: ', self.outputTypeLayout)
+    self.outputTypeGroup = qt.QButtonGroup()
+
+    self.outputSegmentationRadioButton = qt.QRadioButton('Segmentation')
+    self.outputTypeGroup.addButton(self.outputSegmentationRadioButton)
+    self.outputTypeLayout.addWidget(self.outputSegmentationRadioButton)
+    if DEFAULT_OUTPUTTYPE == OUTPUT_SEGMENTATION:
+      self.outputSegmentationRadioButton.setChecked(True)
+
+
+    modelFrame = qt.QFrame()
+    modelLayout = qt.QHBoxLayout()
+    modelLayout.setContentsMargins(0,0,0,0)
+    modelFrame.setLayout(modelLayout)
+    self.outputTypeLayout.addWidget(modelFrame)
+
+    self.outputModelRadioButton = qt.QRadioButton('Model: ')
+    self.outputTypeGroup.addButton(self.outputModelRadioButton)
+    modelFrame.layout().addWidget(self.outputModelRadioButton)
+    if DEFAULT_OUTPUTTYPE == OUTPUT_MODEL:
+      self.outputModelRadioButton.setChecked(True)
+
+    self.outputTypeGroup.connect('buttonClicked(int)', self.updateMRMLFromGUI)
+
+    self.outputModelSelector = slicer.qMRMLNodeComboBox()
+    self.outputModelSelector.nodeTypes = ["vtkMRMLModelNode"]
+    self.outputModelSelector.selectNodeUponCreation = False
+    self.outputModelSelector.addEnabled = False
+    self.outputModelSelector.renameEnabled = True
+    self.outputModelSelector.removeEnabled = True
+    self.outputModelSelector.noneEnabled = True
+    self.outputModelSelector.noneDisplay = 'Create new Model'
+    self.outputModelSelector.showHidden = False
+    self.outputModelSelector.showChildNodeTypes = False
+    self.outputModelSelector.baseName = "Model"
+    self.outputModelSelector.selectNodeUponCreation = True
+    self.outputModelSelector.setMRMLScene(slicer.mrmlScene)
+    modelFrame.layout().addWidget(self.outputModelSelector)
+    self.outputModelSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.updateMRMLFromGUI)
 
 
     # advanced options
@@ -217,15 +244,16 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
     pass # For the sake of example
 
   def setMRMLDefaults(self):
-    self.scriptedEffect.setParameterDefault(ARG_OUTPUTTYPE, DEFAULT_OUTPUTTYPE)
-    self.scriptedEffect.setParameterDefault(ARG_SMOOTHINGFACTOR, DEFAULT_SMOOTHINGFACTOR)
-
-    self.scriptedEffect.setParameterDefault(ARG_CARVECAVITIES, False)
+    self.scriptedEffect.setParameterDefault(ARG_CARVECAVITIES, DEFAULT_CARVECAVITIES)
     self.scriptedEffect.setParameterDefault(ARG_CAVITIESDIAMETER, DEFAULT_CAVITIESDIAMETER)
     self.scriptedEffect.setParameterDefault(ARG_CAVITIESDEPTH, DEFAULT_CAVITIESDEPTH)
 
-    self.scriptedEffect.setParameterDefault(ARG_CREATESHELL, False)
+    self.scriptedEffect.setParameterDefault(ARG_CREATESHELL, DEFAULT_CREATESHELL)
     self.scriptedEffect.setParameterDefault(ARG_SHELLTHICKNESS, DEFAULT_SHELLTHICKNESS)
+
+    self.scriptedEffect.setParameterDefault(ARG_OUTPUTTYPE, DEFAULT_OUTPUTTYPE)
+    self.scriptedEffect.setParameterDefault(ARG_SMOOTHINGFACTOR, DEFAULT_SMOOTHINGFACTOR)
+    self.scriptedEffect.setParameterDefault(ARG_OUTPUTMODELNODE, None)
     
     self.scriptedEffect.setParameterDefault(ARG_ITERATIONS, DEFAULT_ITERATIONS)
     self.scriptedEffect.setParameterDefault(ARG_SPACING, DEFAULT_SPACING)
@@ -245,6 +273,9 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
       wasBlocked = pElement.blockSignals(True)
       pElement.value = value
       pElement.blockSignals(wasBlocked)
+
+    self.cavitiesCheckBox.setChecked(self.scriptedEffect.parameter(ARG_CARVECAVITIES)=='True')
+    self.createShellCheckBox.setChecked(self.scriptedEffect.parameter(ARG_CREATESHELL)=='True')
     
     outputTypeID = self.scriptedEffect.parameter(ARG_OUTPUTTYPE)
     if OUTPUT_SEGMENTATION == outputTypeID:
@@ -253,13 +284,11 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
     elif OUTPUT_MODEL == outputTypeID:
       self.outputModelRadioButton.setChecked(True)
       self.outputSegmentationRadioButton.setChecked(False)
-
-    self.cavitiesCheckBox.setChecked(self.scriptedEffect.parameter(ARG_CARVECAVITIES)=='True')
-    self.createShellCheckBox.setChecked(self.scriptedEffect.parameter(ARG_CREATESHELL)=='True')
     
+    self.outputModelSelector.setCurrentNode(slicer.mrmlScene.GetNodeByID(self.scriptedEffect.parameter(ARG_OUTPUTMODELNODE)))
+
     self.disableOptions()
     self.cleanup()
-    
 
   def updateMRMLFromGUI(self):
     for pId, pElement in [
@@ -270,16 +299,18 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
         (ARG_ITERATIONS, self.iterationsSlider),
         (ARG_SPACING, self.spacingSlider),
         (ARG_SHELLDISTANCE, self.shellDistanceSlider)
-      ]:
+        ]:
       self.scriptedEffect.setParameter(pId, pElement.value)
+
+    self.scriptedEffect.setParameter(ARG_CARVECAVITIES, self.cavitiesCheckBox.isChecked())
+    self.scriptedEffect.setParameter(ARG_CREATESHELL, self.createShellCheckBox.isChecked())
 
     if self.outputSegmentationRadioButton.isChecked():
       self.scriptedEffect.setParameter(ARG_OUTPUTTYPE, OUTPUT_SEGMENTATION)
     elif self.outputModelRadioButton.isChecked():
       self.scriptedEffect.setParameter(ARG_OUTPUTTYPE, OUTPUT_MODEL)
-
-    self.scriptedEffect.setParameter(ARG_CARVECAVITIES, self.cavitiesCheckBox.isChecked())
-    self.scriptedEffect.setParameter(ARG_CREATESHELL, self.createShellCheckBox.isChecked())
+    
+    self.scriptedEffect.setParameter(ARG_OUTPUTMODELNODE, self.outputModelSelector.currentNodeID)
 
     self.disableOptions()
     self.cleanup()
@@ -305,6 +336,7 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
       self.shellThicknessSlider.setEnabled(False)
       self.shellDistanceSlider.setEnabled(False)
 
+    self.outputModelSelector.setEnabled(self.scriptedEffect.parameter(ARG_OUTPUTTYPE) == OUTPUT_MODEL)
 
   def onApply(self):
 
@@ -323,11 +355,10 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
 
     seg = self.scriptedEffect.parameterSetNode().GetSegmentationNode()
     segID = self.scriptedEffect.parameterSetNode().GetSelectedSegmentID()
+    modID = self.scriptedEffect.parameter(ARG_OUTPUTMODELNODE)
+    outputMod = slicer.mrmlScene.GetNodeByID(self.scriptedEffect.parameter(ARG_OUTPUTMODELNODE))
 
     kwargs = {
-      ARG_OUTPUTTYPE : self.scriptedEffect.parameter(ARG_OUTPUTTYPE),
-      ARG_SMOOTHINGFACTOR : self.scriptedEffect.doubleParameter(ARG_SMOOTHINGFACTOR),
-
       ARG_CARVECAVITIES : self.scriptedEffect.parameter(ARG_CARVECAVITIES)=='True',
       ARG_CAVITIESDIAMETER : self.scriptedEffect.doubleParameter(ARG_CAVITIESDIAMETER),
       ARG_CAVITIESDEPTH : self.scriptedEffect.doubleParameter(ARG_CAVITIESDEPTH),
@@ -335,12 +366,15 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
       ARG_CREATESHELL : self.scriptedEffect.parameter(ARG_CREATESHELL)=='True',
       ARG_SHELLTHICKNESS : self.scriptedEffect.doubleParameter(ARG_SHELLTHICKNESS),
 
+      ARG_OUTPUTTYPE : self.scriptedEffect.parameter(ARG_OUTPUTTYPE),
+      ARG_SMOOTHINGFACTOR : self.scriptedEffect.doubleParameter(ARG_SMOOTHINGFACTOR),
+
       ARG_ITERATIONS : self.scriptedEffect.doubleParameter(ARG_ITERATIONS),
       ARG_SPACING : self.scriptedEffect.doubleParameter(ARG_SPACING),
       ARG_SHELLDISTANCE : self.scriptedEffect.doubleParameter(ARG_SHELLDISTANCE)
     }
     
-    self.logic.ApplyWrapSolidify(seg, segID, **kwargs)
+    self.logic.ApplyWrapSolidify(seg, segID, outputMod, **kwargs)
 
     qt.QApplication.restoreOverrideCursor()
     self.applyButton.text = 'Apply'
@@ -363,7 +397,7 @@ class WrapSolidifyLogic(object):
     logging.info("User requested cancelling.")
     self.cancelRequested = True
 
-  def ApplyWrapSolidify(self, segmentationNode, segmentID, **kwargs):
+  def ApplyWrapSolidify(self, segmentationNode, segmentID, modelNode=None, **kwargs):
     """Applies the Shrinkwrap-Raycast-Shrinkwrap Filter, a surface filter, to the selected passed segment.
     
     Arguments:
@@ -429,13 +463,18 @@ class WrapSolidifyLogic(object):
     cellLocator = vtk.vtkCellLocator()
     cellLocator.SetDataSet(inputPolyData)
     cellLocator.BuildLocator()
+    self.outputModel = modelNode
+
 
     #region Helper Functions
 
     def cleanup():
       if self.logCallback: self.logCallback('')
 
+    
+    
     def polydataToModel(polydata, smooth=True):
+
       if self.cancelRequested:
         cleanup()
         return False
@@ -444,12 +483,18 @@ class WrapSolidifyLogic(object):
       if smooth:
         polydata = smoothPolydata(polydata)
 
-      modelNode = self.modelsLogic.AddModel(polydata)
+
+      
+      if not self.outputModel:
+        self.outputModel = self.modelsLogic.AddModel(polydata)
+        self.outputModel.SetName(segment.GetName())
+        self.outputModel.GetDisplayNode().SliceIntersectionVisibilityOn()
+      
+
+      else:
+        self.outputModel.SetAndObservePolyData(polydata)
         
-      seg = self.scriptedEffect.parameterSetNode().GetSegmentationNode().GetSegmentation().GetSegment(self.scriptedEffect.parameterSetNode().GetSelectedSegmentID())
-      modelNode.GetDisplayNode().SetColor(seg.GetColor())
-      modelNode.SetName(seg.GetName())
-      modelNode.GetDisplayNode().SliceIntersectionVisibilityOn()
+      self.outputModel.GetDisplayNode().SetColor(segment.GetColor())
 
       return True
 
@@ -463,10 +508,10 @@ class WrapSolidifyLogic(object):
         polydata = smoothPolydata(polydata)
 
       tempSegment = vtkSegmentationCorePython.vtkSegment()
-      tempSegment.SetName(segmentationNode.GetSegmentation().GetSegment(segmentID).GetName())
-      tempSegment.SetColor(segmentationNode.GetSegmentation().GetSegment(segmentID).GetColor())
+      tempSegment.SetName(segment.GetName())
+      tempSegment.SetColor(segment.GetColor())
       tempSegment.AddRepresentation(vtkSegmentationCorePython.vtkSegmentationConverter.GetSegmentationClosedSurfaceRepresentationName(), polydata)
-      segmentationNode.GetSegmentation().GetSegment(segmentID).DeepCopy(tempSegment)
+      segment.DeepCopy(tempSegment)
       segmentationNode.Modified()
       segmentationNode.RemoveClosedSurfaceRepresentation()
       segmentationNode.CreateClosedSurfaceRepresentation()
@@ -1008,10 +1053,6 @@ class WrapSolidifyLogic(object):
 
 
 
-ARG_OUTPUTTYPE = 'outputTypeWrapSolidify'
-OUTPUT_MODEL = 'modelOutput'
-OUTPUT_SEGMENTATION = 'segmentationOutput'
-DEFAULT_OUTPUTTYPE = OUTPUT_SEGMENTATION
 
 ARG_SMOOTHINGFACTOR = 'smoothingFactor'
 DEFAULT_SMOOTHINGFACTOR = 0.2
@@ -1027,6 +1068,14 @@ ARG_CREATESHELL = 'createShell'
 DEFAULT_CREATESHELL = False
 ARG_SHELLTHICKNESS = 'shellThickness'
 DEFAULT_SHELLTHICKNESS = 1.5
+
+ARG_OUTPUTTYPE = 'outputTypeWrapSolidify'
+OUTPUT_MODEL = 'modelOutput'
+OUTPUT_SEGMENTATION = 'segmentationOutput'
+DEFAULT_OUTPUTTYPE = OUTPUT_SEGMENTATION
+
+ARG_OUTPUTMODELNODE = 'outputModelNode'
+DEFAULT_OUTPUTMODELNODE = ''
 
 ARG_ITERATIONS = 'iterationsNr'
 DEFAULT_ITERATIONS = 6
