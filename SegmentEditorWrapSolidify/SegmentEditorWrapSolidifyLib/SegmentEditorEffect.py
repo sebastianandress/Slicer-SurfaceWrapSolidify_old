@@ -402,7 +402,7 @@ class WrapSolidifyLogic(object):
         **createShell (bool): Whether or not the solidification will be done only for a outer shell.
         **shellThickness (-0.1-10): Thickness of the shell. Only used if createShell == True. WARNING: If <0, a nonmanifold mesh gets created, Segmentation will fail.
         **iterationsNr (1-10): Nr. of iterations of the shrinkwrap process.
-        **spacing (>1): Spacing of remesh process.
+        **spacing (>0.1): Spacing of remesh process.
         **shellDistance (-0.1-10): Maximal distance between input segmentation and shell, larger distant vertices get deleted. Only used if createShell == True. If <0, no vertex gets deleted.
 
 
@@ -1062,7 +1062,7 @@ DEFAULT_CREATESHELL = False
 ARG_SHELLTHICKNESS = 'shellThickness'
 DEFAULT_SHELLTHICKNESS = 1.5
 
-ARG_OUTPUTTYPE = 'outputTypeWrapSolidify'
+ARG_OUTPUTTYPE = 'outputType'
 OUTPUT_MODEL = 'MODEL'
 OUTPUT_SEGMENTATION = 'SEGMENTATION'
 DEFAULT_OUTPUTTYPE = OUTPUT_SEGMENTATION
