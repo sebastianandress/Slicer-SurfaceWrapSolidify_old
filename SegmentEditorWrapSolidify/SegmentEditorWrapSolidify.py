@@ -82,10 +82,10 @@ class SegmentEditorWrapSolidifyTest(ScriptedLoadableModuleTest):
     segmentationNode.CreateDefaultDisplayNodes()
     segmentationNode.SetReferenceImageGeometryParameterFromVolumeNode(masterVolumeNode)
     
-    filterModes = ["CONVEXHULL", "RAYCASTS", "DEEPHULL", "SOLIDIFIED"]
+    features = ["none", "carveCavities", "createShell", "both"]
     spheres = [
-      [10, 4, 4, 4],
-      [10, -4,-4,-4]]
+      [20, 5, 5, 5],
+      [20, -5,-5,-5]]
     appender = vtk.vtkAppendPolyData()
     for sphere in spheres:
       sphereSource = vtk.vtkSphereSource()
@@ -93,7 +93,7 @@ class SegmentEditorWrapSolidifyTest(ScriptedLoadableModuleTest):
       sphereSource.SetCenter(sphere[1], sphere[2], sphere[3])
       appender.AddInputConnection(sphereSource.GetOutputPort())
 
-    for m in filterModes:
+    for m in features:
       segmentName = str(m)
       segment = vtkSegmentationCore.vtkSegment()
       segment.SetName(segmentationNode.GetSegmentation().GenerateUniqueSegmentID(segmentName))
@@ -115,20 +115,39 @@ class SegmentEditorWrapSolidifyTest(ScriptedLoadableModuleTest):
 
     ##################################
     self.delayDisplay("Run WrapSolidify Effect")
-    segmentEditorWidget.setActiveEffectByName("WrapSolidify")
+    segmentEditorWidget.setActiveEffectByName("Wrap Solidify")
     effect = segmentEditorWidget.activeEffect()
 
-    for t in ["MODEL", "SEGMENTATION"]:
+    for t in ["SEGMENTATION", "MODEL"]:
       effect.setParameter("outputType", t)
-      for m in filterModes:
-        self.delayDisplay("Creating Output Type %s, Filter Mode %s" %(t,m))
-        effect.setParameter("filterMode", m)
-        segmentEditorWidget.setCurrentSegmentID(segmentationNode.GetSegmentation().GetSegmentIdBySegmentName(m))
-        effect.self().onApply()
+
+      self.delayDisplay("Creating Output Type %s, activated feature none" %(t))
+      segmentEditorWidget.setCurrentSegmentID(segmentationNode.GetSegmentation().GetSegmentIdBySegmentName('none'))
+      effect.setParameter("carveCavities", False)
+      effect.setParameter("createShell", False)
+      effect.self().onApply()
+
+      self.delayDisplay("Creating Output Type %s, activated feature carveCavities" %(t))
+      effect.setParameter("carveCavities", True)
+      effect.setParameter("createShell", False)
+      segmentEditorWidget.setCurrentSegmentID(segmentationNode.GetSegmentation().GetSegmentIdBySegmentName('carveCavities'))
+      effect.self().onApply()
+
+      self.delayDisplay("Creating Output Type %s, activated feature createShell" %(t))
+      effect.setParameter("carveCavities", False)
+      effect.setParameter("createShell", True)
+      segmentEditorWidget.setCurrentSegmentID(segmentationNode.GetSegmentation().GetSegmentIdBySegmentName('createShell'))
+      effect.self().onApply()
+
+      self.delayDisplay("Creating Output Type %s, activated feature both" %(t))
+      effect.setParameter("carveCavities", True)
+      effect.setParameter("createShell", True)
+      segmentEditorWidget.setCurrentSegmentID(segmentationNode.GetSegmentation().GetSegmentIdBySegmentName('both'))
+      effect.self().onApply()
 
     ##################################
     self.delayDisplay("Creating Segments from Models")
-    for m in filterModes:
+    for m in features:
       model = slicer.util.getNode(m)
       segmentName = "MODEL_%s" % m
       segment = vtkSegmentationCore.vtkSegment()
@@ -148,16 +167,25 @@ class SegmentEditorWrapSolidifyTest(ScriptedLoadableModuleTest):
     ##################################
     self.delayDisplay("Check a few numerical results")
     
-    self.assertEqual( round(statistics["CONVEXHULL",'ScalarVolumeSegmentStatisticsPlugin.volume_mm3']), 47896)
-    self.assertEqual( round(statistics["MODEL_CONVEXHULL",'ScalarVolumeSegmentStatisticsPlugin.volume_mm3']), 47896)
+    # logging.info(round(statistics["none",'ScalarVolumeSegmentStatisticsPlugin.volume_mm3']))
+    # logging.info(round(statistics["MODEL_none",'ScalarVolumeSegmentStatisticsPlugin.volume_mm3']))
+    # logging.info(round(statistics["carveCavities",'ScalarVolumeSegmentStatisticsPlugin.volume_mm3']))
+    # logging.info(round(statistics["MODEL_carveCavities",'ScalarVolumeSegmentStatisticsPlugin.volume_mm3']))
+    # logging.info(round(statistics["createShell",'ScalarVolumeSegmentStatisticsPlugin.volume_mm3']))
+    # logging.info(round(statistics["MODEL_createShell",'ScalarVolumeSegmentStatisticsPlugin.volume_mm3']))
+    # logging.info(round(statistics["both",'ScalarVolumeSegmentStatisticsPlugin.volume_mm3']))
+    # logging.info(round(statistics["MODEL_both",'ScalarVolumeSegmentStatisticsPlugin.volume_mm3']))
 
-    self.assertEqual( round(statistics["RAYCASTS",'ScalarVolumeSegmentStatisticsPlugin.volume_mm3']), 41628)
-    self.assertEqual( round(statistics["MODEL_RAYCASTS",'ScalarVolumeSegmentStatisticsPlugin.volume_mm3']), 41628)
+    self.assertEqual( round(statistics["none",'ScalarVolumeSegmentStatisticsPlugin.volume_mm3']), 46605)
+    self.assertEqual( round(statistics["MODEL_none",'ScalarVolumeSegmentStatisticsPlugin.volume_mm3']), 46320)
 
-    self.assertEqual( round(statistics["DEEPHULL",'ScalarVolumeSegmentStatisticsPlugin.volume_mm3']), 6450)
-    self.assertEqual( round(statistics["MODEL_DEEPHULL",'ScalarVolumeSegmentStatisticsPlugin.volume_mm3']), 6450)
+    self.assertEqual( round(statistics["carveCavities",'ScalarVolumeSegmentStatisticsPlugin.volume_mm3']), 46605)
+    self.assertEqual( round(statistics["MODEL_carveCavities",'ScalarVolumeSegmentStatisticsPlugin.volume_mm3']), 46321)
 
-    self.assertEqual( round(statistics["SOLIDIFIED",'ScalarVolumeSegmentStatisticsPlugin.volume_mm3']), 2477)
-    self.assertEqual( round(statistics["MODEL_SOLIDIFIED",'ScalarVolumeSegmentStatisticsPlugin.volume_mm3']), 2477)
+    self.assertEqual( round(statistics["createShell",'ScalarVolumeSegmentStatisticsPlugin.volume_mm3']), 9257)
+    self.assertEqual( round(statistics["MODEL_createShell",'ScalarVolumeSegmentStatisticsPlugin.volume_mm3']), 9230)
+
+    self.assertEqual( round(statistics["both",'ScalarVolumeSegmentStatisticsPlugin.volume_mm3']), 9254)
+    self.assertEqual( round(statistics["MODEL_both",'ScalarVolumeSegmentStatisticsPlugin.volume_mm3']), 9245)
     
     self.delayDisplay('test_WrapSolidify1 passed')
