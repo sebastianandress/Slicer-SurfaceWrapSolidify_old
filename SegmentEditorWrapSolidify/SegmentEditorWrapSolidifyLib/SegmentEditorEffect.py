@@ -776,7 +776,7 @@ class WrapSolidifyLogic(object):
                 cell = shrinkModelPD.GetCell(i)
                 pointId = cell.GetPointIds().GetId(p)
                 normal = np.array(shrinkModelPD.GetPointData().GetArray('Normals').GetTuple(pointId)) * (-1)
-                vector = normal * options[ARG_CAVITIESDEPTH] # max Length greater 0, checked above
+                vector = normal * (options[ARG_CAVITIESDEPTH] + VAL_OFFSET) # max Length greater 0, checked above
 
                 points = cell.GetPoints()
 
