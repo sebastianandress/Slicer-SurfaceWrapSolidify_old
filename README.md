@@ -6,7 +6,7 @@ Please cite the corresponding paper when using this filter for publications:
     @article{3DPrintWrapSolidify,
         author      = {Weidert, Simon and Andress, Sebastian and Linhart, Christoph and Suero, Eduardo M. and Greiner, Axel and Böcker, Wolfgang and Kammerlander, Christian and Becker, Christopher A.},
         title       = {3D printing method for next-day acetabular fracture surgery using a surface filtering pipeline: feasibility and 1-year clinical results},
-        journal      = {International Journal of Computer Assisted Radiology and Surgery},
+        journal     = {International Journal of Computer Assisted Radiology and Surgery},
         publisher   = {Springer},
         date        = {2020-01-02},
     }
