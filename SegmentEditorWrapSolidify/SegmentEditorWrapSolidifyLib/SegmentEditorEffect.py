@@ -767,7 +767,7 @@ class WrapSolidifyLogic(object):
     normals.SetComputeCellNormals(1)
     normals.SetInputConnection(cleanPolyData.GetOutputPort())
     normals.SplittingOff()
-    if shellOffsetDirection == SHELL_OFFSET_INSIDE:
+    if shellOffsetDirection == SHELL_OFFSET_OUTSIDE:
       normals.FlipNormalsOn()
     normals.Update()
 
