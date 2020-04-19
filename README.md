@@ -1,7 +1,10 @@
-**Copyright (c) 2019, Sebastian Andreß**\
+**Copyright &copy; 2020, Sebastian Andreß**\
 All rights reserved. Please find the license [here](https://github.com/sebastianandress/Slicer-SurfaceWrapSolidify/blob/master/LICENSE.md).
 
 For further collaborations, patient studies or any help, do not hesitate to contact [Sebastian Andreß, MD](mailto:sebastian.andress@med.uni-muenchen.de).
+Thanks a lot to [Andras Lasso](https://github.com/lassoan) for also contributing and improving the module.
+
+![](https://cdn0.scrvt.com/4d3e519fe5939342b95c7312343779ef/c736dfe931dfb22d/0e6f79ca70bd/Logo-klinikum.svg | height=200) ![](https://www.slicer.org/w/img_auth.php/b/b9/3DSlicerLogo-H-Color-424x236.png | height=200)
 
 # Surface Wrap Solidify
 **Segment Editor Effect for 3D Slicer**
@@ -11,7 +14,7 @@ This effect was designed for creating fractured bone models for fast 3D printing
 
 In our use-case, we used this effect after applying a simple threshold operation and separating the bone with simple brushing and island techniques. Please watch the [workflow example](#Workflow-Example) videos. The effect was tested on more than 30 acetabular fracture models, it reduced the printing time about 70%.
 
-![Screenshot](/Resources/Screenshots/screenshot1.png)
+![Screenshot](/Resources/Screenshots/screenshot4.png)
 
 ## Description
 The Wrap Solidify Effect uses the following pipeline:
