@@ -4,7 +4,7 @@ All rights reserved. Please find the license [here](https://github.com/sebastian
 For further collaborations, patient studies or any help, do not hesitate to contact [Sebastian Andreß, MD](mailto:sebastian.andress@med.uni-muenchen.de).
 Thanks a lot to [Andras Lasso](https://github.com/lassoan) for also contributing and improving the module.
 
-![](https://cdn0.scrvt.com/4d3e519fe5939342b95c7312343779ef/c736dfe931dfb22d/0e6f79ca70bd/Logo-klinikum.svg | height=200) ![](https://www.slicer.org/w/img_auth.php/b/b9/3DSlicerLogo-H-Color-424x236.png | height=200)
+![Header](/Resources/Media/header.png)
 
 # Surface Wrap Solidify
 **Segment Editor Effect for 3D Slicer**
