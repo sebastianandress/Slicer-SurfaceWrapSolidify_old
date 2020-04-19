@@ -1,13 +1,23 @@
 **Copyright &copy; 2020, Sebastian Andreß**\
 All rights reserved. Please find the license [here](https://github.com/sebastianandress/Slicer-SurfaceWrapSolidify/blob/master/LICENSE.md).
 
+Please cite the corresponding paper when using this filter for publications:
+
+    @article{3DPrintWrapSolidify,
+        author      = {Weidert, Simon and Andress, Sebastian and Linhart, Christoph and Suero, Eduardo M. and Greiner, Axel and Böcker, Wolfgang and Kammerlander, Christian and Becker, Christopher A.},
+        title       = {3D printing method for next-day acetabular fracture surgery using a surface filtering pipeline: feasibility and 1-year clinical results},
+        journal      = {International Journal of Computer Assisted Radiology and Surgery},
+        publisher   = {Springer},
+        date        = {2020-01-02},
+    }
+
+
 For further collaborations, patient studies or any help, do not hesitate to contact [Sebastian Andreß, MD](mailto:sebastian.andress@med.uni-muenchen.de).
 Thanks a lot to [Andras Lasso](https://github.com/lassoan) for also contributing and improving the module.
 
 ![Header](/Resources/Media/header.png)
 
 # Surface Wrap Solidify
-**Segment Editor Effect for 3D Slicer**
 
 ## Introduction
 This effect was designed for creating fractured bone models for fast 3D printing. Especially in orthopedic trauma surgery, the editing time, as well as the printing time should be as short as possible. Using this effect helps to fulfil both features. Also, by removing inner cancellous structures, it is possible to achieve a fracture reduction on the printed model.
