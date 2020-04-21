@@ -224,7 +224,7 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
       self.logic.segmentationNode = self.scriptedEffect.parameterSetNode().GetSegmentationNode()
       self.logic.segmentId = currentSegmentId = self.scriptedEffect.parameterSetNode().GetSelectedSegmentID()
       self.logic.region = self.scriptedEffect.parameter(ARG_REGION)
-      self.logic.regionSegmentId = self.scriptedEffect.parameter(ARG_REGION_SEGMENT_ID)
+      self.logic.regionSegmentId = self.scriptedEffect.parameter(ARG_REGION_SEGMENT_ID) if self.scriptedEffect.parameterDefined(ARG_REGION_SEGMENT_ID) else ""
       self.logic.carveHolesInOuterSurface = (self.scriptedEffect.parameter(ARG_CARVE_HOLES_IN_OUTER_SURFACE) == "True")
       self.logic.carveHolesInOuterSurfaceDiameter = self.scriptedEffect.doubleParameter(ARG_CARVE_HOLES_IN_OUTER_SURFACE_DIAMETER)
       self.logic.splitCavities = (self.scriptedEffect.parameter(ARG_SPLIT_CAVITIES) == "True")
@@ -385,12 +385,18 @@ class WrapSolidifyLogic(object):
       if abs(originalSurfaceSmoothing-self.smoothingFactor) > 0.001:
         self.segmentationNode.GetSegmentation().SetConversionParameter(
           slicer.vtkBinaryLabelmapToClosedSurfaceConversionRule().GetSmoothingFactorParameterName(), str(self.smoothingFactor))
+        # Force re-conversion
         self.segmentationNode.RemoveClosedSurfaceRepresentation()
-        self.segmentationNode.CreateClosedSurfaceRepresentation()
+      self.segmentationNode.CreateClosedSurfaceRepresentation()
       self.segmentationNode.GetClosedSurfaceRepresentation(self.segmentId, self._inputPd)
+      if self._inputPd.GetNumberOfPoints() == 0:
+        raise ValueError("Input segment closed surface representation is empty")
       # Get input spacing
       inputLabelmap = slicer.vtkOrientedImageData()
       self.segmentationNode.GetBinaryLabelmapRepresentation(self.segmentId, inputLabelmap)
+      extent = inputLabelmap.GetExtent()
+      if extent[0]>extent[1] or extent[2]>extent[3] or extent[4]>extent[5]:
+        raise ValueError("Input segment labelmap representation is empty")
       self._inputSpacing = math.sqrt(np.sum(np.array(inputLabelmap.GetSpacing())**2))
     else:
       # Representation is already closed surface
@@ -506,6 +512,9 @@ class WrapSolidifyLogic(object):
       # shrink
       self._checkCancelRequested()
       self._log('Shrinking %s/%s...' %(iterationIndex+1, self.shrinkwrapIterations))
+      if shrunkenPd.GetNumberOfPoints()<=1 or self._inputPd.GetNumberOfPoints()<=1:
+        # we must not feed empty polydata into vtkSmoothPolyDataFilter because it would crash the application
+        raise ValueError("Mesh has become empty during shrink-wrap iterations")
       smoothFilter = vtk.vtkSmoothPolyDataFilter()
       smoothFilter.SetInputData(0, shrunkenPd)
       smoothFilter.SetInputData(1, self._inputPd)  # constrain smoothed points to the input surface
