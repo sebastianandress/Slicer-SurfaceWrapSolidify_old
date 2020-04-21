@@ -607,5 +607,21 @@
     </hint>
    </hints>
   </connection>
+  <connection>
+   <sender>SegmentEditorWrapSolidify</sender>
+   <signal>mrmlSceneChanged(vtkMRMLScene*)</signal>
+   <receiver>splitCavitiesDiameterSlider</receiver>
+   <slot>setMRMLScene(vtkMRMLScene*)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>110</x>
+     <y>249</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>262</x>
+     <y>41</y>
+    </hint>
+   </hints>
+  </connection>
  </connections>
 </ui>
