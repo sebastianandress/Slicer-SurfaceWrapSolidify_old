@@ -1,3 +1,5 @@
+## Project moved, please follow [here](https://github.com/sebastianandress/Slicer-SurfaceWrapSolidify). This repository won't be continued.
+
 **Copyright &copy; 2020, Sebastian Andreß**\
 All rights reserved. Please find the license [here](https://github.com/sebastianandress/Slicer-SurfaceWrapSolidify/blob/master/LICENSE.md).
 
